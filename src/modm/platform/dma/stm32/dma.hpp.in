@@ -46,7 +46,7 @@ namespace platform
  * @author	Kevin Laeufer
  * @ingroup	{{partname}}_dma
  */
-class Dma{{ id }}
+class DmaHal{{ id }}
 {
 public:
 	static inline void
@@ -60,6 +60,70 @@ public:
 %% for stream in streams
 	class Stream{{ stream }} : public DmaBase
 	{
+	public:
+		using Context = ;
+
+		static void
+		reset();
+
+		template<typename T1, typename T2>
+		static void
+		memoryToPeripheral(modm::disable_deduction_t<T1*> memory, modm::disable_deduction_t<T2*> peripheral);
+
+		template<typename T1, typename T2>
+		static void
+		peripheralToMemory(modm::disable_deduction_t<T1*> peripheral, modm::disable_deduction_t<T2*> memory);
+
+		template<typename T1, typename T2>
+		static void
+		memoryToMemory(modm::disable_deduction_t<T1*> memory, modm::disable_deduction_t<T2*> memory);
+
+		static void
+		setTransferLength(uint16_t length);
+
+		static void
+		setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m);
+
+		static void
+		setPriority(Priority p);
+
+		%% if target["family"] == "f4"
+		static constexpr bool hasBurstTransfer = true;
+		static void
+		setBurstTransfer(PeripheralBurstTransfer p, MemoryBurstTransfer m);
+		%% else
+		static constexpr bool hasBurstTransfer = false;
+		%% endif
+
+		%% if target["family"] == "f4"
+		static constexpr bool hasFlowControl = true;
+		static void
+		setBurstTransfer(FlowControl f);
+		%% else
+		static constexpr bool hasFlowControl = false;
+		%% endif
+
+		%% if target["family"] == "f4"
+		// every f4?
+		static constexpr bool hasCircularMode = true;
+		static constexpr bool hasDoubleBufferMode = true;
+		enum class Mode : uint32_t {
+			Normal = 0,
+			CircularMode = DMA_SxCR_CIRC,
+			DoubleBufferMode = DMA_SxCR_DBM,
+		}
+		static constexpr uint32_t ModeMask = DMA_SxCR_CIRC | DMA_SxCR_DBM;
+		%% else
+		static constexpr bool hasCircularMode = false;
+		static constexpr bool hasDoubleBufferMode = false;
+		%% endif
+
+		static bool
+		acquire(Context* context);
+
+		static void
+		release();
+
 	public:
 	%% set pointer_types = [8, 16, 32]
 	%% for type in pointer_types
@@ -83,6 +147,7 @@ public:
 			);
 		%% endif
 	%% endfor
+
 
 	%% for type in pointer_types
 		/// will disable the stream
