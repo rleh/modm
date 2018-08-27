@@ -25,7 +25,7 @@
 %% endif
 
 void
-modm::platform::Dma{{ id }}::enable()
+modm::platform::DmaHal{{ id }}::enable()
 {
 %% if target["family"] == "f4"
 	RCC->AHB1ENR  |= RCC_AHB1ENR_DMA{{ id }}EN;
@@ -37,7 +37,7 @@ modm::platform::Dma{{ id }}::enable()
 }
 
 void
-modm::platform::Dma{{ id }}::disable()
+modm::platform::DmaHal{{ id }}::disable()
 {
 %% if target["family"] == "f4"
 	RCC->AHB1ENR &= ~RCC_AHB1ENR_DMA{{ id }}EN;
@@ -66,129 +66,38 @@ modm::platform::Dma{{ id }}::disable()
 	%% set prefix = "DMA_CCR"
 %% endif
 
+
 %% set pointer_types = [8, 16, 32]
 %% for type in pointer_types
 void
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::setMemorySource(uint{{type}}_t* address,
-	MemoryIncrementMode inc
-%% if target["family"] == "f4"
-, MemoryBurstTransfer transfer)
-%% else
-)
-%% endif
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::memoryToPeripheral{{ type }}(uint{{ type }}_t* memory, volatile uint32_t* peripheral)
 {
-	//stop();
-	static constexpr MemoryDataSize size = MemoryDataSize::Bit{{type}};
-	// a memory source could mean that either a memory-to-peripheral or a
-	// memory-to-memory transfer is intended
-	// we'll use the current transfer mode to determine what to do
-	DataTransferDirection dir;
-	if(getDataTransferDirection() == DataTransferDirection::MemoryToPeripheral) {
-		dir = DataTransferDirection::MemoryToPeripheral;
-		{{ mem }} = reinterpret_cast<uint32_t>(address);
-
-	} else {
-		dir = DataTransferDirection::MemoryToMemory;
-		{{ per }} = reinterpret_cast<uint32_t>(address);
-	}
-	{{ reg }} = ({{ reg }} & ~memoryMask) | static_cast<uint32_t>(size)
-		| static_cast<uint32_t>(inc)      | static_cast<uint32_t>(dir)
-%% if target["family"] == "f4"
-		| static_cast<uint32_t>(transfer);
-%% else
-		;
-%% endif
+	{{ mem }} = reinterpret_cast<uint32_t>(memory);
+	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToPeripheral):
 }
 
 void
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::setPeripheralSource(uint{{type}}_t* address,
-	PeripheralIncrementMode inc
-%% if target["family"] == "f4"
-, PeripheralBurstTransfer transfer)
-%% else
-)
-%% endif
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory)
 {
-	//stop();
-	static constexpr PeripheralDataSize size = PeripheralDataSize::Bit{{type}};
-	static constexpr DataTransferDirection dir = DataTransferDirection::PeripheralToMemory;
-	{{ per }} = reinterpret_cast<uint32_t>(address);
-	{{ reg }} = ({{ reg }} & ~peripheralMask) | static_cast<uint32_t>(size)
-		| static_cast<uint32_t>(inc)          | static_cast<uint32_t>(dir)
-%% if target["family"] == "f4"
-		| static_cast<uint32_t>(transfer);
-%% else
-		;
-%% endif
+	{{ mem }} = reinterpret_cast<uint32_t>(memory);
+	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::PeripheralToMemory):
+}
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::memoryToMemory{{ type }}(uint{{ type }}_t* m1, uint{{ type }}_t* m2)
+{
+	{{ mem }} = reinterpret_cast<uint32_t>(m1);
+	{{ per }} = reinterpret_cast<uint32_t>(m2); // ???
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToMemory):
 }
 %% endfor
 
-%% for type in pointer_types
 
-void
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::setMemoryDestination(uint{{type}}_t* address,
-	MemoryIncrementMode inc
-%% if target["family"] == "f4"
-, MemoryBurstTransfer transfer)
-%% else
-)
-%% endif
-{
-	//stop();
-	static constexpr MemoryDataSize size = MemoryDataSize::Bit{{type}};
-	// a memory source could mean that either a memory-to-peripheral or a
-	// memory-to-memory transfer is intended
-	// we'll use the current transfer mode to determine what to do
-	DataTransferDirection dir;
-	if(getDataTransferDirection() == DataTransferDirection::PeripheralToMemory) {
-		dir = DataTransferDirection::PeripheralToMemory;
-		{{ mem }} = reinterpret_cast<uint32_t>(address);
-	} else {
-		dir = DataTransferDirection::MemoryToMemory;
-		{{ mem }} = reinterpret_cast<uint32_t>(address);
-	}
-	{{ reg }} = ({{ reg }} & ~memoryMask) | static_cast<uint32_t>(size)
-		| static_cast<uint32_t>(inc)      | static_cast<uint32_t>(dir)
-%% if target["family"] == "f4"
-		| static_cast<uint32_t>(transfer);
-%% else
-		;
-%% endif
-}
 
 
 void
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::setPeripheralDestination(uint{{type}}_t* address,
-	PeripheralIncrementMode inc
-%% if target["family"] == "f4"
-, PeripheralBurstTransfer transfer)
-%% else
-)
-%% endif
-{
-	//stop();
-	static constexpr PeripheralDataSize size = PeripheralDataSize::Bit{{type}};
-	// if memory-to-memory mode was selected, the memory source
-	// will have been saved in the Peripheral Register
-	// in memory-to-peripheral mode, the memory source will
-	// need to be saved in the Memory Register
-	if(getDataTransferDirection() == DataTransferDirection::MemoryToMemory) {
-		{{ mem }} = {{ per }};
-	}
-	static constexpr DataTransferDirection dir = DataTransferDirection::MemoryToPeripheral;
-	{{ per }} = reinterpret_cast<uint32_t>(address);
-	{{ reg }} = ({{ reg }} & ~peripheralMask) | static_cast<uint32_t>(size)
-		| static_cast<uint32_t>(inc)          | static_cast<uint32_t>(dir)
-%% if target["family"] == "f4"
-		| static_cast<uint32_t>(transfer);
-%% else
-		;
-%% endif
-}
-%% endfor
-
-void
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::stop()
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::stop()
 {
 %% if target["family"] == "f4"
 	{{ reg }} &= ~DMA_SxCR_EN;
@@ -200,7 +109,7 @@ modm::platform::Dma{{ id }}::Stream{{ stream_id }}::stop()
 }
 
 void
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::configure(
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::configure(
 %% if target["family"] == "f4"
 	Channel channel,
 %% endif
@@ -223,7 +132,7 @@ modm::platform::Dma{{ id }}::Stream{{ stream_id }}::configure(
 }
 
 void
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::start()
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::start()
 {
 %% if target["family"] == "f4"
 	{{ reg }} |= DMA_SxCR_EN;
@@ -238,7 +147,7 @@ modm::platform::Dma{{ id }}::Stream{{ stream_id }}::start()
 }
 
 bool
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::isFinished()
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isFinished()
 {
 %% if target["family"] == "f4"
 	return !({{ reg }} & DMA_SxCR_EN);
@@ -247,8 +156,8 @@ modm::platform::Dma{{ id }}::Stream{{ stream_id }}::isFinished()
 %% endif
 }
 
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::DataTransferDirection
-modm::platform::Dma{{ id }}::Stream{{ stream_id }}::getDataTransferDirection()
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::DataTransferDirection
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::getDataTransferDirection()
 {
 	return static_cast<DataTransferDirection>(
 %% if target["family"] == "f4"
