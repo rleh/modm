@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2014, Kevin Läufer
- * Copyright (c) 2014-2017, Niklas Hauser
+ * Copyright (c) 2018, Christopher Durand
+ * Copyright (c) 2018, Raphael Lehmann
  *
  * This file is part of the modm project.
  *
@@ -10,12 +10,12 @@
  */
 // ----------------------------------------------------------------------------
 
-#ifndef MODM_STM32_DMA{{ id }}_HPP
-#define MODM_STM32_DMA{{ id }}_HPP
+#ifndef MODM_STM32_DMAHAL{{ id }}_HPP
+#define MODM_STM32_DMAHAL{{ id }}_HPP
 
 #include <stdint.h>
 #include "../device.hpp"
-#include "dma_base.hpp"
+#include "dmahal_streambase.hpp"
 
 /**
  * @ingroup 	{{partname}}
@@ -35,14 +35,7 @@
 namespace modm::platform
 {
 
-/**
- * DMA
- *
- * Does not support - among other things - double buffering or FIFO usage
- *
- * @author	Kevin Laeufer
- * @ingroup	{{partname}}_dma
- */
+
 class DmaHal{{ id }}
 {
 public:
@@ -55,7 +48,7 @@ public:
 
 public:
 %% for stream in streams
-	class Stream{{ stream }} : public StreamBase
+	class Stream{{ stream }} : public DmaHalStreamBase
 	{
 	public:
 		void
@@ -109,6 +102,6 @@ public:
 
 }	// namespace modm::platform
 
-#include "dma_{{ id }}_impl.hpp"
+#include "dmahal_{{ id }}_impl.hpp"
 
-#endif	// MODM_STM32_DMA{{ id }}_HPP
+#endif	// MODM_STM32_DMAHAL{{ id }}_HPP
