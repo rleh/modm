@@ -22,10 +22,7 @@
 	%% set reg_prefix = "DMA_CCR"
 %% endif
 
-namespace modm
-{
-
-namespace platform
+namespace modm::platform
 {
 
 /**
@@ -34,7 +31,7 @@ namespace platform
  * @author	Kevin Laeufer
  * @ingroup	{{partname}}_dma
  */
-class DmaBase
+class StreamBase
 {
 public:
 	// Enums
@@ -132,6 +129,7 @@ public:
 		Enabled 	= {{ reg_prefix }}_CIRC, ///< circular mode
 	};
 
+protected:
 	enum class
 	DataTransferDirection : uint32_t
 	{
@@ -182,10 +180,90 @@ protected:
 			DMA_CCR_CIRC     |						// CircularMode
 			DMA_CCR_PL_1     | DMA_CCR_PL_0;		// Priority
 %% endif
+
+public:
+	virtual
+	~StreamBase() = default;
+
+	StreamBase(const StreamBase&) = delete;
+	StreamBase& operator=(const StreamBase&) = delete;
+
+	void
+	reset();
+
+%% set pointer_types = [8, 16, 32]
+%% for type in pointer_types
+	virtual void
+	memoryToPeripheral{{ type }}(uint{{ type }}_t* memory, volatile uint32_t* peripheral) = 0;
+	virtual void
+	peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory) = 0;
+	virtual void
+	memoryToMemory{{ type }}(uint{{ type }}_t*, uint{{ type }}_t*) = 0;
+%% endfor
+
+	virtual void
+	setTransferLength(uint16_t length) = 0;
+
+	virtual void
+	setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m) = 0;
+
+	virtual void
+	setPriority(Priority p) = 0;
+
+	/*
+	%% if target["family"] == "f4"
+	static constexpr bool hasBurstTransfer = true;
+	virtual void
+	setBurstTransfer(PeripheralBurstTransfer p, MemoryBurstTransfer m) = 0;
+	%% else
+	static constexpr bool hasBurstTransfer = false;
+	%% endif
+
+	%% if target["family"] == "f4"
+	static constexpr bool hasFlowControl = true;
+	virtual void
+	setFlowControl(FlowControl f) = 0;
+	%% else
+	static constexpr bool hasFlowControl = false;
+	%% endif
+	*/
+
+	%% if target["family"] == "f4"
+	// every f4?
+	static constexpr bool hasCircularMode = true;
+	static constexpr bool hasDoubleBufferMode = true;
+	enum class Mode : uint32_t {
+		Normal = 0,
+		CircularMode = DMA_SxCR_CIRC,
+		DoubleBufferMode = DMA_SxCR_DBM,
+	};
+	static constexpr uint32_t ModeMask = DMA_SxCR_CIRC | DMA_SxCR_DBM;
+	virtual void
+	setMode(Mode m) = 0;
+	%% else
+	static constexpr bool hasCircularMode = false;
+	static constexpr bool hasDoubleBufferMode = false;
+	%% endif
+
+	virtual bool
+	acquire(Context* context) = 0;
+	// waits until isFinished() (if any transfer has ever been started)
+	// stores the context once another driver acquires
+
+	virtual void
+	release() = 0;
+	// releases instantly, DMA transfer may still be active
+
+	virtual void
+	stop() = 0;
+
+	virtual void
+	start() = 0;
+
+	virtual bool
+	isFinished() = 0;
 };
 
-}	// namespace platform
-
-}	// namespace modm
+}	// namespace modm::platform
 
 #endif	// MODM_STM32F3_DMA_BASE_HPP
