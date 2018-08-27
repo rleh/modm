@@ -32,10 +32,7 @@
 	%% endif
 %% endif
 
-namespace modm
-{
-
-namespace platform
+namespace modm::platform
 {
 
 /**
@@ -64,19 +61,22 @@ public:
 		using Context = ;
 
 		static void
+		connect<>();
+
+		static void
 		reset();
 
-		template<typename T1, typename T2>
+		template<typename T>
 		static void
-		memoryToPeripheral(modm::disable_deduction_t<T1*> memory, modm::disable_deduction_t<T2*> peripheral);
+		memoryToPeripheral(modm::disable_deduction_t<T*> memory, modm::disable_deduction_t<T*> peripheral);
 
-		template<typename T1, typename T2>
+		template<typename T>
 		static void
-		peripheralToMemory(modm::disable_deduction_t<T1*> peripheral, modm::disable_deduction_t<T2*> memory);
+		peripheralToMemory(modm::disable_deduction_t<T*> peripheral, modm::disable_deduction_t<T*> memory);
 
-		template<typename T1, typename T2>
+		template<typename T>
 		static void
-		memoryToMemory(modm::disable_deduction_t<T1*> memory, modm::disable_deduction_t<T2*> memory);
+		memoryToMemory(modm::disable_deduction_t<T*> memory, modm::disable_deduction_t<T*> memory);
 
 		static void
 		setTransferLength(uint16_t length);
@@ -120,74 +120,15 @@ public:
 
 		static bool
 		acquire(Context* context);
+		// waits until isFinished() (if any transfer has ever been started)
+		// stores the context once another driver acquires
 
 		static void
 		release();
-
-	public:
-	%% set pointer_types = [8, 16, 32]
-	%% for type in pointer_types
-		/// will disable the stream
-		static inline void
-		setMemorySource(uint{{type}}_t* address,
-			MemoryIncrementMode inc = MemoryIncrementMode::Increment
-		%% if target["family"] == "f4"
-			, MemoryBurstTransfer transfer = MemoryBurstTransfer::Single);
-		%% elif target["family"] == "f3"
-			);
-		%% endif
-
-		/// will disable the stream
-		static inline void
-		setPeripheralSource(uint{{type}}_t* address,
-			PeripheralIncrementMode inc = PeripheralIncrementMode::Fixed
-		%% if target["family"] == "f4"
-			, PeripheralBurstTransfer transfer = PeripheralBurstTransfer::Single);
-		%% elif target["family"] == "f3"
-			);
-		%% endif
-	%% endfor
-
-
-	%% for type in pointer_types
-		/// will disable the stream
-		static inline void
-		setMemoryDestination(uint{{type}}_t* address,
-			MemoryIncrementMode inc = MemoryIncrementMode::Increment
-		%% if target["family"] == "f4"
-			, MemoryBurstTransfer transfer = MemoryBurstTransfer::Single);
-		%% elif target["family"] == "f3"
-			);
-		%% endif
-
-		/// will disable the stream
-		static inline void
-		setPeripheralDestination(uint{{type}}_t* address,
-			PeripheralIncrementMode inc = PeripheralIncrementMode::Fixed
-		%% if target["family"] == "f4"
-			, PeripheralBurstTransfer transfer = PeripheralBurstTransfer::Single);
-		%% elif target["family"] == "f3"
-			);
-		%% endif
-	%% endfor
+		// releases instantly, DMA transfer may still be active
 
 		static inline void
 		stop();
-
-		/// will disable the stream
-		static inline void
-		configure(
-		%% if target["family"] == "f4"
-			Channel channel,
-		%% endif
-			uint16_t sample_length,
-			Priority priority = Priority::Medium,
-			CircularMode circular = CircularMode::Disabled
-		%% if target["family"] == "f4"
-			, FlowControl flow = FlowControl::Dma);
-		%% elif target["family"] == "f3"
-			);
-		%% endif
 
 		static inline void
 		start();
@@ -195,15 +136,14 @@ public:
 		static inline bool
 		isFinished();
 
-		static inline DataTransferDirection
-		getDataTransferDirection();
+		template<uint32_t channel>
+		static inline bool
+		connect();
 	};
 %% endfor
 };
 
-}	// namespace platform
-
-}	// namespace modm
+}	// namespace modm::platform
 
 #include "dma_{{ id }}_impl.hpp"
 
