@@ -93,9 +93,6 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::memoryToMemory{{ type }}(
 }
 %% endfor
 
-
-
-
 void
 modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::stop()
 {
@@ -106,29 +103,6 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::stop()
 	{{ reg }} &= ~DMA_CCR_EN;
 	while({{ reg }} & DMA_CCR_EN); // wait for stream to be stopped
 %% endif
-}
-
-void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::configure(
-%% if target["family"] == "f4"
-	Channel channel,
-%% endif
-	uint16_t sample_length, Priority priority, CircularMode circular
-%% if target["family"] == "f4"
-	, FlowControl flow)
-%% elif target["family"] == "f3"
-	)
-%% endif
-{
-	//stop();
-	{{ reg }} = ({{ reg }} & ~configmask) | static_cast<uint32_t>(priority)
-										  | static_cast<uint32_t>(circular)
-%% if target["family"] == "f4"
-		| static_cast<uint32_t>(channel) | static_cast<uint32_t>(flow);
-%% else
-		;
-%% endif
-	{{ length }} = sample_length;
 }
 
 void
@@ -156,15 +130,59 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isFinished()
 %% endif
 }
 
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::DataTransferDirection
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::getDataTransferDirection()
+
+// TODO below
+
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setTransferLength(uint16_t length)
 {
-	return static_cast<DataTransferDirection>(
-%% if target["family"] == "f4"
-		{{ reg }} & (DMA_SxCR_DIR_0 | DMA_SxCR_DIR_1));
-%% else
-		{{ reg }} & (DMA_CCR_MEM2MEM | DMA_CCR_DIR));
-%% endif
 }
+
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m)
+{
+}
+
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setPriority(Priority p)
+{
+}
+
+%% if target["family"] == "f4"
+// every f4?
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setMode(Mode m)
+{
+}
+%% endif
+
+bool
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::acquire(Context* context)
+{
+	// waits until isFinished() (if any transfer has ever been started)
+	// stores the context once another driver acquires
+}
+
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::release()
+{
+	// releases instantly, DMA transfer may still be active
+}
+
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::stop()
+{
+}
+
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::start()
+{
+}
+
+bool
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isFinished()
+{
+}
+
 
 %% endfor
