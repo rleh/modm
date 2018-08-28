@@ -198,7 +198,6 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isAvailable(Peripheral p)
 {
 	switch(p) {
 		case Spi1Tx:
-			[[fallthrough]]
 		case Uart3Tx:
 			return true;
 		default:
