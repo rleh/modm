@@ -103,6 +103,10 @@ public:
 		isAvailable(Peripheral p, Bitmap features) override;
 	};
 %% endfor
+%% for slot in slots
+       Slot{{ slot }} slot{{ slot }};
+%% endfor
+
 };
 
 }	// namespace modm::platform
