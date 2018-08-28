@@ -10,104 +10,11 @@
  */
 // ----------------------------------------------------------------------------
 
-#ifndef MODM_STM32_DMAHAL{{ id }}_HPP
-#define MODM_STM32_DMAHAL{{ id }}_HPP
+#ifndef MODM_STM32_DMAHAL_HPP
+#define MODM_STM32_DMAHAL_HPP
 
-#include <stdint.h>
-#include "../device.hpp"
-#include "dmahal_streambase.hpp"
-
-/**
- * @ingroup 	{{partname}}
- * @defgroup	{{partname}}_dma DMA
- */
-
-%% if target["family"] == "f4"
-	%% set streams = range(0,8)
-%% elif target["family"] == "f3"
-	%% if id == 1
-		%% set streams = range(1,7)
-	%% elif id == 2
-		%% set streams = range(1,5)
-	%% endif
-%% endif
-
-namespace modm::platform
-{
-
-
-class DmaHal{{ id }}
-{
-public:
-	static inline void
-	enable();
-
-	static inline void
-	disable();
-
-
-public:
-%% for stream in streams
-	class Stream{{ stream }} : public DmaHalStreamBase
-	{
-	public:
-		void
-		reset() override;
-
-	%% set pointer_types = [8, 16, 32]
-	%% for type in pointer_types
-		void
-		memoryToPeripheral{{ type }}(uint{{ type }}_t* memory, volatile uint32_t* peripheral) override;
-		void
-		peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory) override;
-		void
-		memoryToMemory{{ type }}(uint{{ type }}_t*, uint{{ type }}_t*) override;
-	%% endfor
-
-		void
-		setTransferLength(uint16_t length) override;
-
-		void
-		setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m) override;
-
-		void
-		setPriority(Priority p) override;
-
-		%% if target["family"] == "f4"
-		// every f4?
-		void
-		setMode(Mode m) override;
-		%% endif
-
-		bool
-		acquire(Context* context) override;
-		// waits until isFinished() (if any transfer has ever been started)
-		// stores the context once another driver acquires
-
-		void
-		release() override;
-		// releases instantly, DMA transfer may still be active
-
-		void
-		stop() override;
-
-		void
-		start() override;
-
-		bool
-		isFinished() override;
-
-		void
-		connect(Peripheral p) override;
-
-		bool
-		isAvailable(Peripheral p) override;
-	};
+%% for id in ids
+#include "dmahal_{{ id }}.hpp"
 %% endfor
-};
 
-}	// namespace modm::platform
-
-#include "dmahal_{{ id }}_impl.hpp"
-
-#endif	// MODM_STM32_DMAHAL{{ id }}_HPP
+#endif	// MODM_STM32_DMAHAL_HPP

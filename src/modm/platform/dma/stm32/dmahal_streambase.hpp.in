@@ -25,11 +25,94 @@
 namespace modm::platform
 {
 
-class DmaHalStreamBase
+class DmaHalSlotInterface
+{
+public:
+	virtual
+	~DmaHalSlotInterface() = default;
+
+	DmaHalSlotInterface(const DmaHalSlotInterface&) = delete;
+	DmaHalSlotInterface& operator=(const DmaHalSlotInterface&) = delete;
+
+%% set pointer_types = [8, 16, 32]
+%% for type in pointer_types
+	virtual void
+	memoryToPeripheral{{ type }}(uint{{ type }}_t* memory, volatile uint32_t* peripheral) = 0;
+	virtual void
+	peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory) = 0;
+	virtual void
+	memoryToMemory{{ type }}(uint{{ type }}_t*, uint{{ type }}_t*) = 0;
+%% if feature["double_buffer"]
+	// with double buffering:
+	virtual void
+	memoryToPeripheral{{ type }}(uint{{ type }}_t* memory1, uint{{ type }}_t* memory2, volatile uint32_t* peripheral) = 0;
+	virtual void
+	peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory1, uint{{ type }}_t* memory2) = 0;
+%% endif
+%% endfor
+
+	virtual void
+	setTransferLength(uint16_t length) = 0;
+
+	virtual void
+	setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m) = 0;
+
+	virtual void
+	setPriority(Priority p) = 0;
+
+	%% if feature["circular_mode"]
+	// every f4?
+	enum class Mode : uint32_t {
+		Normal = 0,
+		CircularMode = DMA_SxCR_CIRC,
+	};
+	static constexpr uint32_t ModeMask = DMA_SxCR_CIRC;
+	virtual void
+	setMode(Mode m) = 0;
+	%% endif
+
+	virtual bool
+	acquire(Context* context) = 0;
+	// waits until isFinished() (if any transfer has ever been started)
+	// stores the context once another driver acquires
+
+	virtual void
+	release() = 0;
+	// releases instantly, DMA transfer may still be active
+
+	virtual void
+	stop() = 0;
+
+	virtual void
+	start() = 0;
+
+	virtual void
+	reset() = 0;
+
+	virtual bool
+	isFinished() = 0;
+
+	enum class Peripheral {
+		Spi1Tx,
+		Spi1Rx,
+		Foo,
+		Bar,
+	};
+
+	virtual void
+	connect(Peripheral p) = 0;
+
+	using Bitmap = uint32_t; // TODO
+
+	virtual bool
+	isAvailable(Peripheral p, Bitmap features) = 0;
+};
+
+class DmaHalSlotBase : public DmaHalSlotInterface
 {
 public:
 	// Enums
-%% if target["family"] == "f4"
+%% if feature["request_mux"]
 	enum class
 	Channel : uint32_t
 	{
@@ -42,7 +125,9 @@ public:
 		Channel6 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1,
 		Channel7 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
 	};
+%% endif
 
+%% if feature["burst"]
 	enum class
 	MemoryBurstTransfer : uint32_t
 	{
@@ -51,7 +136,6 @@ public:
 		Increment8 	= DMA_SxCR_MBURST_1,
 		Increment16 = DMA_SxCR_MBURST_1 | DMA_SxCR_MBURST_0,
 	};
-
 	enum class
 	PeripheralBurstTransfer : uint32_t
 	{
@@ -59,13 +143,6 @@ public:
 		Increment4 	= DMA_SxCR_PBURST_0,
 		Increment8 	= DMA_SxCR_PBURST_1,
 		Increment16 = DMA_SxCR_PBURST_1 | DMA_SxCR_PBURST_0,
-	};
-
-	enum class
-	FlowControl : uint32_t
-	{
-		Dma 		= 0,
-		Peripheral 	= DMA_SxCR_PFCTRL, ///< the peripheral is the flow controller
 	};
 %% endif
 
@@ -78,6 +155,7 @@ public:
 		VeryHigh 	= {{ reg_prefix }}_PL_1 | {{ reg_prefix }}_PL_0,
 	};
 
+protected:
 	/// In direct mode (if the FIFO is not used)
 	/// MSIZE is forced by hardware to the same value as PSIZE
 	enum class
@@ -102,6 +180,7 @@ public:
 		Bit32 		= Word,
 	};
 
+public:
 	enum class
 	MemoryIncrementMode : uint32_t
 	{
@@ -114,13 +193,6 @@ public:
 	{
 		Fixed 		= 0,
 		Increment 	= {{ reg_prefix }}_PINC, ///< incremented according to PeripheralDataSize
-	};
-
-	enum class
-	CircularMode : uint32_t
-	{
-		Disabled 	= 0,
-		Enabled 	= {{ reg_prefix }}_CIRC, ///< circular mode
 	};
 
 protected:
@@ -180,104 +252,6 @@ protected:
 			DMA_CCR_CIRC     |						// CircularMode
 			DMA_CCR_PL_1     | DMA_CCR_PL_0;		// Priority
 %% endif
-
-public:
-	virtual
-	~StreamBase() = default;
-
-	StreamBase(const StreamBase&) = delete;
-	StreamBase& operator=(const StreamBase&) = delete;
-
-	void
-	reset();
-
-%% set pointer_types = [8, 16, 32]
-%% for type in pointer_types
-	virtual void
-	memoryToPeripheral{{ type }}(uint{{ type }}_t* memory, volatile uint32_t* peripheral) = 0;
-	virtual void
-	peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory) = 0;
-	virtual void
-	memoryToMemory{{ type }}(uint{{ type }}_t*, uint{{ type }}_t*) = 0;
-%% endfor
-
-	virtual void
-	setTransferLength(uint16_t length) = 0;
-
-	virtual void
-	setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m) = 0;
-
-	virtual void
-	setPriority(Priority p) = 0;
-
-	/*
-	%% if target["family"] == "f4"
-	static constexpr bool hasBurstTransfer = true;
-	virtual void
-	setBurstTransfer(PeripheralBurstTransfer p, MemoryBurstTransfer m) = 0;
-	%% else
-	static constexpr bool hasBurstTransfer = false;
-	%% endif
-
-	%% if target["family"] == "f4"
-	static constexpr bool hasFlowControl = true;
-	virtual void
-	setFlowControl(FlowControl f) = 0;
-	%% else
-	static constexpr bool hasFlowControl = false;
-	%% endif
-	*/
-
-	%% if target["family"] == "f4"
-	// every f4?
-	static constexpr bool hasCircularMode = true;
-	static constexpr bool hasDoubleBufferMode = true;
-	enum class Mode : uint32_t {
-		Normal = 0,
-		CircularMode = DMA_SxCR_CIRC,
-		DoubleBufferMode = DMA_SxCR_DBM,
-	};
-	static constexpr uint32_t ModeMask = DMA_SxCR_CIRC | DMA_SxCR_DBM;
-	virtual void
-	setMode(Mode m) = 0;
-	%% else
-	static constexpr bool hasCircularMode = false;
-	static constexpr bool hasDoubleBufferMode = false;
-	%% endif
-
-	virtual bool
-	acquire(Context* context) = 0;
-	// waits until isFinished() (if any transfer has ever been started)
-	// stores the context once another driver acquires
-
-	virtual void
-	release() = 0;
-	// releases instantly, DMA transfer may still be active
-
-	virtual void
-	stop() = 0;
-
-	virtual void
-	start() = 0;
-
-	virtual bool
-	isFinished() = 0;
-
-	virtual void
-	connect() = 0;
-
-	enum class Peripheral {
-		Spi1Tx,
-		Spi1Rx,
-		Foo,
-		Bar,
-	};
-
-	virtual void
-	connect(Peripheral p) = 0;
-
-	virtual bool
-	isAvailable(Peripheral p) = 0;
 };
 
 }	// namespace modm::platform

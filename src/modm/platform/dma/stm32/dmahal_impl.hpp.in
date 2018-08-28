@@ -15,50 +15,26 @@
 #endif
 
 %% if target["family"] == "f4"
-	%% set streams = range(0,8)
+	%% set slots = range(0,8)
 %% elif target["family"] == "f3"
 	%% if id == 1
-		%% set streams = range(1,7)
+		%% set slots = range(1,7)
 	%% elif id == 2
-		%% set streams = range(1,5)
+		%% set slots = range(1,5)
 	%% endif
 %% endif
 
-void
-modm::platform::DmaHal{{ id }}::enable()
-{
-%% if target["family"] == "f4"
-	RCC->AHB1ENR  |= RCC_AHB1ENR_DMA{{ id }}EN;
-	RCC->AHB1RSTR |=  RCC_AHB1RSTR_DMA{{ id }}RST;
-	RCC->AHB1RSTR &= ~RCC_AHB1RSTR_DMA{{ id }}RST;
-%% elif target["family"] == "f3"
-	RCC->AHBENR  |= RCC_AHBENR_DMA{{ id }}EN;
-%% endif
-}
-
-void
-modm::platform::DmaHal{{ id }}::disable()
-{
-%% if target["family"] == "f4"
-	RCC->AHB1ENR &= ~RCC_AHB1ENR_DMA{{ id }}EN;
-%% elif target["family"] == "f3"
-	RCC->AHBENR &= ~RCC_AHBENR_DMA{{ id }}EN;
-%% endif
-
-}
-
-
-%% for stream_id in streams
+%% for slot_id in slots
 
 %% if target["family"] == "f4"
-	%% set stream = "DMA" ~ id ~ "_Stream" ~ stream_id
-	%% set reg = stream ~ "->CR"
-	%% set mem = stream ~ "->M0AR"
-	%% set per = stream ~ "->PAR"
-	%% set length = stream ~ "->NDTR"
+	%% set slot = "DMA" ~ id ~ "_slot" ~ slot_id
+	%% set reg = slot ~ "->CR"
+	%% set mem = slot ~ "->M0AR"
+	%% set per = slot ~ "->PAR"
+	%% set length = slot ~ "->NDTR"
 	%% set prefix = "DMA_SxCR"
 %% elif target["family"] == "f3"
-	%% set channel = "DMA" ~ id ~ "_Channel" ~ stream_id
+	%% set channel = "DMA" ~ id ~ "_Channel" ~ slot_id
 	%% set reg = channel ~ "->CCR"
 	%% set mem = channel ~ "->CMAR"
 	%% set per = channel ~ "->CPAR"
@@ -70,7 +46,7 @@ modm::platform::DmaHal{{ id }}::disable()
 %% set pointer_types = [8, 16, 32]
 %% for type in pointer_types
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::memoryToPeripheral{{ type }}(uint{{ type }}_t* memory, volatile uint32_t* peripheral)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::memoryToPeripheral{{ type }}(uint{{ type }}_t* memory, volatile uint32_t* peripheral)
 {
 	{{ mem }} = reinterpret_cast<uint32_t>(memory);
 	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
@@ -78,55 +54,74 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::memoryToPeripheral{{ type
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory)
 {
 	{{ mem }} = reinterpret_cast<uint32_t>(memory);
 	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
 	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::PeripheralToMemory):
 }
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::memoryToMemory{{ type }}(uint{{ type }}_t* m1, uint{{ type }}_t* m2)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::memoryToMemory{{ type }}(uint{{ type }}_t* m1, uint{{ type }}_t* m2)
 {
 	{{ mem }} = reinterpret_cast<uint32_t>(m1);
 	{{ per }} = reinterpret_cast<uint32_t>(m2); // ???
 	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToMemory):
 }
+%% if target["family"] == "f4"
+void
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::memoryToPeripheral{{ type }}(uint{{ type }}_t* memory1, uint{{ type }}_t* memory2, volatile uint32_t* peripheral)
+{
+	// TODO
+	{{ mem }} = reinterpret_cast<uint32_t>(memory);
+	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToPeripheral):
+}
+
+void
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory1, uint{{ type }}_t* memory2)
+{
+	// TODO
+	{{ mem }} = reinterpret_cast<uint32_t>(memory);
+	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::PeripheralToMemory):
+}
+%% endif
 %% endfor
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::stop()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::stop()
 {
 %% if target["family"] == "f4"
 	{{ reg }} &= ~DMA_SxCR_EN;
-	while({{ reg }} & DMA_SxCR_EN); // wait for stream to be stopped
+	while({{ reg }} & DMA_SxCR_EN); // wait for slot to be stopped
 %% else
 	{{ reg }} &= ~DMA_CCR_EN;
-	while({{ reg }} & DMA_CCR_EN); // wait for stream to be stopped
+	while({{ reg }} & DMA_CCR_EN); // wait for slot to be stopped
 %% endif
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::start()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::start()
 {
 %% if target["family"] == "f4"
 	{{ reg }} |= DMA_SxCR_EN;
 %% else
 	// clear interrupt flags
-	DMA{{ id }}->ISR |= DMA_ISR_TEIF{{ stream_id }} |
-						DMA_ISR_TCIF{{ stream_id }} |
-						DMA_ISR_HTIF{{ stream_id }} |
-						DMA_ISR_GIF{{ stream_id }};
+	DMA{{ id }}->ISR |= DMA_ISR_TEIF{{ slot_id }} |
+						DMA_ISR_TCIF{{ slot_id }} |
+						DMA_ISR_HTIF{{ slot_id }} |
+						DMA_ISR_GIF{{ slot_id }};
 	{{ reg }} |= DMA_CCR_EN;
 %% endif
 }
 
 bool
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isFinished()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 {
 %% if target["family"] == "f4"
 	return !({{ reg }} & DMA_SxCR_EN);
 %% else
-	return (DMA{{ id }}->ISR & DMA_ISR_TCIF{{ stream_id }});
+	return (DMA{{ id }}->ISR & DMA_ISR_TCIF{{ slot_id }});
 %% endif
 }
 
@@ -134,58 +129,58 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isFinished()
 // TODO below
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setTransferLength(uint16_t length)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setTransferLength(uint16_t length)
 {
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m)
 {
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setPriority(Priority p)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setPriority(Priority p)
 {
 }
 
 %% if target["family"] == "f4"
 // every f4?
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::setMode(Mode m)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setMode(Mode m)
 {
 }
 %% endif
 
 bool
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::acquire(Context* context)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::acquire(Context* context)
 {
 	// waits until isFinished() (if any transfer has ever been started)
 	// stores the context once another driver acquires
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::release()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::release()
 {
 	// releases instantly, DMA transfer may still be active
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::stop()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::stop()
 {
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::start()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::start()
 {
 }
 
 bool
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isFinished()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 {
 }
 
 void
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::connect(Peripheral p)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Peripheral p)
 {
 	switch(p) {
 		case Spi1Tx:
@@ -194,7 +189,7 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::connect(Peripheral p)
 }
 
 bool
-modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isAvailable(Peripheral p)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isAvailable(Peripheral p, Bitmap features)
 {
 	switch(p) {
 		case Spi1Tx:
