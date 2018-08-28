@@ -184,5 +184,26 @@ modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isFinished()
 {
 }
 
+void
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::connect(Peripheral p)
+{
+	switch(p) {
+		case Spi1Tx:
+		break;
+	}
+}
+
+bool
+modm::platform::DmaHal{{ id }}::Stream{{ stream_id }}::isAvailable(Peripheral p)
+{
+	switch(p) {
+		case Spi1Tx:
+			[[fallthrough]]
+		case Uart3Tx:
+			return true;
+		default:
+			return false;
+	}
+}
 
 %% endfor

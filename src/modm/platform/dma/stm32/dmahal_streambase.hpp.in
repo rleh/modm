@@ -262,6 +262,22 @@ public:
 
 	virtual bool
 	isFinished() = 0;
+
+	virtual void
+	connect() = 0;
+
+	enum class Peripheral {
+		Spi1Tx,
+		Spi1Rx,
+		Foo,
+		Bar,
+	};
+
+	virtual void
+	connect(Peripheral p) = 0;
+
+	virtual bool
+	isAvailable(Peripheral p) = 0;
 };
 
 }	// namespace modm::platform

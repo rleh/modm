@@ -96,6 +96,12 @@ public:
 
 		bool
 		isFinished() override;
+
+		void
+		connect(Peripheral p) override;
+
+		bool
+		isAvailable(Peripheral p) override;
 	};
 %% endfor
 };
