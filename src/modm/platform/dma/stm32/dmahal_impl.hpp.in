@@ -189,7 +189,7 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Peripheral p)
 }
 
 bool
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isAvailable(Peripheral p, Bitmap features)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isAvailable(Peripheral p, FeatureMap_t features)
 {
 	switch(p) {
 		case Spi1Tx:

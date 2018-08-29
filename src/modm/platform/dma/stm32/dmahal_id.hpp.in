@@ -100,7 +100,7 @@ public:
 		connect(Peripheral p) override;
 
 		bool
-		isAvailable(Peripheral p, Bitmap features) override;
+		isAvailable(Peripheral p, FeatureMap_t features) override;
 	};
 %% endfor
 %% for slot in slots

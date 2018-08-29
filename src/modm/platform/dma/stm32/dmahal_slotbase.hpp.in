@@ -16,12 +16,6 @@
 #include <stdint.h>
 #include "../device.hpp"
 
-%% if target["family"] == "f4"
-	%% set reg_prefix = "DMA_SxCR"
-%% elif target["family"] == "f3"
-	%% set reg_prefix = "DMA_CCR"
-%% endif
-
 namespace modm::platform
 {
 
@@ -54,23 +48,56 @@ public:
 	virtual void
 	setTransferLength(uint16_t length) = 0;
 
+	enum class
+	MemoryIncrementMode : uint32_t
+	{
+		Fixed 		= 0,
+		Increment 	= {{ reg_prefix }}_MINC, ///< incremented according to MemoryDataSize
+	};
+
+	enum class
+	PeripheralIncrementMode : uint32_t
+	{
+		Fixed 		= 0,
+		Increment 	= {{ reg_prefix }}_PINC, ///< incremented according to PeripheralDataSize
+	};
+
 	virtual void
 	setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m) = 0;
+
+	enum class
+	Priority : uint8_t
+	{
+		Low = 0,
+		Medium = 1,
+		High = 2,
+		VeryHigh = 3,
+	};
 
 	virtual void
 	setPriority(Priority p) = 0;
 
 	%% if feature["circular_mode"]
 	// every f4?
-	enum class Mode : uint32_t {
+	enum class Mode : uint8_t {
 		Normal = 0,
-		CircularMode = DMA_SxCR_CIRC,
+		CircularMode = 1,
 	};
-	static constexpr uint32_t ModeMask = DMA_SxCR_CIRC;
 	virtual void
 	setMode(Mode m) = 0;
 	%% endif
 
+	struct Context
+	{
+		intptr_t memoryAddress1;
+		intptr_t memoryAddress2; // == 0x00000000 if double buffering is not used
+		volatile uint32_t* peripheralAddress;
+		uint16_t transferLength;
+		uint8_t direction : 2;
+		uint8_t memoryIncrementMode : 1;
+		uint8_t peripheralIncrementMode : 1;
+		uint8_t priority : 2;
+	};
 	virtual bool
 	acquire(Context* context) = 0;
 	// waits until isFinished() (if any transfer has ever been started)
@@ -97,20 +124,35 @@ public:
 		Spi1Rx,
 		Foo,
 		Bar,
+		// TODO code generation HERE!!1!11!!
 	};
 
 	virtual void
 	connect(Peripheral p) = 0;
 
-	using Bitmap = uint32_t; // TODO
+	enum class
+	FeatureMap : uint8_t
+	{
+		DoubleBuffering		= Bit0,
+		CircularMode		= Bit1,
+		Bursts				= Bit2,
+	};
+	MODM_FLAGS8(FeatureMap);
 
 	virtual bool
-	isAvailable(Peripheral p, Bitmap features) = 0;
+	isAvailable(Peripheral p, FeatureMap_t features) = 0;
 };
+
+
+%% if target["family"] == "f4"
+	%% set reg_prefix = "DMA_SxCR"
+%% elif target["family"] == "f3"
+	%% set reg_prefix = "DMA_CCR"
+%% endif
 
 class DmaHalSlotBase : public DmaHalSlotInterface
 {
-public:
+protected:
 	// Enums
 %% if feature["request_mux"]
 	enum class
@@ -146,16 +188,6 @@ public:
 	};
 %% endif
 
-	enum class
-	Priority : uint32_t
-	{
-		Low 		= 0,
-		Medium  	= {{ reg_prefix }}_PL_0,
-		High 		= {{ reg_prefix }}_PL_1,
-		VeryHigh 	= {{ reg_prefix }}_PL_1 | {{ reg_prefix }}_PL_0,
-	};
-
-protected:
 	/// In direct mode (if the FIFO is not used)
 	/// MSIZE is forced by hardware to the same value as PSIZE
 	enum class
@@ -180,22 +212,6 @@ protected:
 		Bit32 		= Word,
 	};
 
-public:
-	enum class
-	MemoryIncrementMode : uint32_t
-	{
-		Fixed 		= 0,
-		Increment 	= {{ reg_prefix }}_MINC, ///< incremented according to MemoryDataSize
-	};
-
-	enum class
-	PeripheralIncrementMode : uint32_t
-	{
-		Fixed 		= 0,
-		Increment 	= {{ reg_prefix }}_PINC, ///< incremented according to PeripheralDataSize
-	};
-
-protected:
 %% if target["family"] == "f4"
 	enum class
 	DataTransferDirection : uint32_t
