@@ -26,9 +26,6 @@
  * @defgroup	{{partname}}_dma DMA
  */
 
-// TODO: generate 'slots' from modm module code
-slots = range(0,8)
-
 namespace modm::platform
 {
 

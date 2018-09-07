@@ -16,8 +16,7 @@
 #include <stdint.h>
 #include "../device.hpp"
 
-// TODO remove:
-%% set reg_prefix = "DMA_SxCR"
+%% set prefix = "DMA_SxCR"
 
 namespace modm::platform
 {
@@ -55,14 +54,14 @@ public:
 	MemoryIncrementMode : uint32_t
 	{
 		Fixed 		= 0,
-		Increment 	= {{ reg_prefix }}_MINC, ///< incremented according to MemoryDataSize
+		Increment 	= {{ prefix }}_MINC, ///< incremented according to MemoryDataSize
 	};
 
 	enum class
 	PeripheralIncrementMode : uint32_t
 	{
 		Fixed 		= 0,
-		Increment 	= {{ reg_prefix }}_PINC, ///< incremented according to PeripheralDataSize
+		Increment 	= {{ prefix }}_PINC, ///< incremented according to PeripheralDataSize
 	};
 
 	virtual void
@@ -148,9 +147,9 @@ public:
 
 
 %% if target["family"] == "f4"
-	%% set reg_prefix = "DMA_SxCR"
+	%% set prefix = "DMA_SxCR"
 %% elif target["family"] == "f3"
-	%% set reg_prefix = "DMA_CCR"
+	%% set prefix = "DMA_CCR"
 %% endif
 
 class DmaHalSlotBase : public DmaHalSlotInterface
@@ -203,9 +202,9 @@ protected:
 	{
 		Byte 		= 0,
 		Bit8 		= Byte,
-		HalfWord 	= {{ reg_prefix }}_MSIZE_0,
+		HalfWord 	= {{ prefix }}_MSIZE_0,
 		Bit16 		= HalfWord,
-		Word 		= {{ reg_prefix }}_MSIZE_1,
+		Word 		= {{ prefix }}_MSIZE_1,
 		Bit32 		= Word,
 	};
 
@@ -214,9 +213,9 @@ protected:
 	{
 		Byte 		= 0,
 		Bit8 		= Byte,
-		HalfWord 	= {{ reg_prefix }}_PSIZE_0,
+		HalfWord 	= {{ prefix }}_PSIZE_0,
 		Bit16 		= HalfWord,
-		Word 		= {{ reg_prefix }}_PSIZE_1,
+		Word 		= {{ prefix }}_PSIZE_1,
 		Bit32 		= Word,
 	};
 

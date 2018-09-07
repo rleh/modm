@@ -11,34 +11,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # -----------------------------------------------------------------------------
 
-class Instance(Module):
-    def __init__(self, instance):
-        self.instance = instance
-
-    def init(self, module):
-        module.name = str(self.instance)
-        module.description = "DMA {} instance".format(self.instance)
-
-    def prepare(self, module, options):
-        module.depends(":platform:dma")
-        return True
-
-    def build(self, env):
-        device = env[":target"]
-
-        """
-        properties = device.properties
-        properties["target"] = device.identifier
-        properties["partname"] = device.partname
-        properties["id"] = self.instance
-
-        env.substitutions = properties
-        env.outbasepath = "modm/src/modm/platform/dma"
-
-        env.template("dma.hpp.in", "dma_{}.hpp".format(self.instance))
-        env.template("dma_impl.hpp.in", "dma_{}_impl.hpp".format(self.instance))
-        """
-
 def init(module):
     module.name = "dma"
     module.parent = "platform"
@@ -48,27 +20,26 @@ def prepare(module, options):
     if not device.has_driver("dma:stm32*"):
         return False
 
-    # FIXME the driver is referenced in STM32F0 device files, but appears only to support STM32F3/4
-    if device.identifier["family"] not in ["f3", "f4"]:
-        return False
-
     module.depends(":cmsis:device")
-
-    for instance in device.get_driver("dma")["instance"]:
-        module.add_submodule(Instance(int(instance)))
 
     return True
 
 def build(env):
     device = env[":target"]
+    driver = device.get_driver("dma")
 
-    print(device.get_driver("dma"))
-    exit(42)
+    #import json
+    #print(json.dumps(driver, indent=2))
+    #exit(42)
 
     properties = device.properties
     properties["target"] = device.identifier
     properties["partname"] = device.partname
-    properties["ids"] = device.get_driver("dma")["instance"]
+
+    properties["ids"] = driver["instance"]
+    properties["slots"] = None
+    properties["type"] = driver["type"]
+    properties["id"] = None
 
     features = {
         "double_buffer": False,
@@ -78,8 +49,15 @@ def build(env):
     }
     properties["feature"] = features
 
+    # TODO WIP
+    properties["slots"] = range(0,8)
+
     env.substitutions = properties
     env.outbasepath = "modm/src/modm/platform/dma"
 
     env.template("dmahal.hpp.in")
     env.template("dmahal_slotbase.hpp.in")
+    for dma_id in properties["ids"]:
+        properties["id"] = dma_id
+        env.template("dmahal_id.hpp.in", "dmahal_{}.hpp".format(dma_id))
+        env.template("dmahal_impl.hpp.in", "dmahal_{}_impl.hpp".format(dma_id))

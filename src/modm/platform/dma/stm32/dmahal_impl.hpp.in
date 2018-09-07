@@ -27,6 +27,7 @@
 %% for slot_id in slots
 
 %% set instance = "DMA" ~ id
+// if type == "stm32-stream-channel"
 %% if target["family"] == "f4"
 	%% set slot = instance ~ "_Stream" ~ slot_id
 	%% set reg = slot ~ "->CR"
@@ -34,6 +35,7 @@
 	%% set per = slot ~ "->PAR"
 	%% set length = slot ~ "->NDTR"
 	%% set prefix = "DMA_SxCR"
+// if type == "stm32-channel-request"
 %% elif target["family"] == "f3" or target["family"] == "l4"
 	%% set slot = instance ~ "_Channel" ~ slot_id
 	%% set reg = slot ~ "->CCR"
@@ -51,7 +53,7 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::memoryToPeripheral{{ type }}(
 {
 	{{ mem }} = reinterpret_cast<uint32_t>(memory);
 	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
-	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToPeripheral):
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToPeripheral);
 }
 
 void
@@ -59,23 +61,23 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::peripheralToMemory{{ type }}(
 {
 	{{ mem }} = reinterpret_cast<uint32_t>(memory);
 	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
-	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::PeripheralToMemory):
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::PeripheralToMemory);
 }
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::memoryToMemory{{ type }}(uint{{ type }}_t* m1, uint{{ type }}_t* m2)
 {
 	{{ mem }} = reinterpret_cast<uint32_t>(m1);
 	{{ per }} = reinterpret_cast<uint32_t>(m2); // ???
-	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToMemory):
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToMemory);
 }
-%% if target["family"] == "f4"
+%% if feature["double_buffer"]
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::memoryToPeripheral{{ type }}(uint{{ type }}_t* memory1, uint{{ type }}_t* memory2, volatile uint32_t* peripheral)
 {
 	// TODO
 	{{ mem }} = reinterpret_cast<uint32_t>(memory);
 	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
-	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToPeripheral):
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::MemoryToPeripheral);
 }
 
 void
@@ -84,7 +86,7 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::peripheralToMemory{{ type }}(
 	// TODO
 	{{ mem }} = reinterpret_cast<uint32_t>(memory);
 	{{ per }} = reinterpret_cast<uint32_t>(peripheral);
-	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::PeripheralToMemory):
+	{{ reg }} = ({{ reg }} & ~DataTransferDirectionMask) | static_cast<uint32_t>(DataTransferDirection::PeripheralToMemory)
 }
 %% endif
 %% endfor
@@ -150,10 +152,10 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::start()
 {
 	// Reset TCIF
 
-%% if target["platform"] = "f4"
+%% if target["platform"] == "f4"
 %% if slot_id <= 3
 	return ({{ instance }}->LISR &= ~DMA_LISR_TCIF{{ slot_id }}); 
-%% elif
+%% else
 	return ({{ instance }}->HISR &= ~DMA_HISR_TCIF{{ slot_id }}); 
 %% endif
 %% else
@@ -166,10 +168,10 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::start()
 bool
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 {
-%% if target["platform"] = "f4"
+%% if target["platform"] == "f4"
 %% if slot_id <= 3
 	return ({{ instance }}->LISR & DMA_LISR_TCIF{{ slot_id }}); 
-%% elif
+%% else
 	return ({{ instance }}->HISR & DMA_HISR_TCIF{{ slot_id }}); 
 %% endif
 %% else
