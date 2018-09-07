@@ -26,19 +26,20 @@
 
 %% for slot_id in slots
 
+%% set instance = "DMA" ~ id
 %% if target["family"] == "f4"
-	%% set slot = "DMA" ~ id ~ "_slot" ~ slot_id
+	%% set slot = instance ~ "_Stream" ~ slot_id
 	%% set reg = slot ~ "->CR"
 	%% set mem = slot ~ "->M0AR"
 	%% set per = slot ~ "->PAR"
 	%% set length = slot ~ "->NDTR"
 	%% set prefix = "DMA_SxCR"
-%% elif target["family"] == "f3"
-	%% set channel = "DMA" ~ id ~ "_Channel" ~ slot_id
-	%% set reg = channel ~ "->CCR"
-	%% set mem = channel ~ "->CMAR"
-	%% set per = channel ~ "->CPAR"
-	%% set length = channel ~ "->CNDTR"
+%% elif target["family"] == "f3" or target["family"] == "l4"
+	%% set slot = instance ~ "_Channel" ~ slot_id
+	%% set reg = slot ~ "->CCR"
+	%% set mem = slot ~ "->CMAR"
+	%% set per = slot ~ "->CPAR"
+	%% set length = slot ~ "->CNDTR"
 	%% set prefix = "DMA_CCR"
 %% endif
 
@@ -89,65 +90,38 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::peripheralToMemory{{ type }}(
 %% endfor
 
 void
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::stop()
-{
-%% if target["family"] == "f4"
-	{{ reg }} &= ~DMA_SxCR_EN;
-	while({{ reg }} & DMA_SxCR_EN); // wait for slot to be stopped
-%% else
-	{{ reg }} &= ~DMA_CCR_EN;
-	while({{ reg }} & DMA_CCR_EN); // wait for slot to be stopped
-%% endif
-}
-
-void
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::start()
-{
-%% if target["family"] == "f4"
-	{{ reg }} |= DMA_SxCR_EN;
-%% else
-	// clear interrupt flags
-	DMA{{ id }}->ISR |= DMA_ISR_TEIF{{ slot_id }} |
-						DMA_ISR_TCIF{{ slot_id }} |
-						DMA_ISR_HTIF{{ slot_id }} |
-						DMA_ISR_GIF{{ slot_id }};
-	{{ reg }} |= DMA_CCR_EN;
-%% endif
-}
-
-bool
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
-{
-%% if target["family"] == "f4"
-	return !({{ reg }} & DMA_SxCR_EN);
-%% else
-	return (DMA{{ id }}->ISR & DMA_ISR_TCIF{{ slot_id }});
-%% endif
-}
-
-
-// TODO below
-
-void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setTransferLength(uint16_t length)
 {
+	{{ length }} = length;
 }
 
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m)
 {
+	{{ reg }} = ({{ reg }} & ~({{ prefix }}_PINC_Msk | {{ prefix }}_MINC_Msk)) | static_cast<uint32_t>(p) | static_cast<uint32_t>(m);
 }
 
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setPriority(Priority p)
 {
+	uint8_t priorityValues[4] = {0b00, 0b01, 0b10, 0b11};
+	{{ reg }} = ({{ reg }} & ~{{ prefix }}_PINC_Msk) | (priorityValues[static_cast<uint32_t>(p)] << {{ prefix }}_PL_Pos);
 }
 
-%% if target["family"] == "f4"
-// every f4?
+%% if feature["circular_mode"]
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setMode(Mode m)
 {
+	{{ reg }} &= ~{{ prefix }}_CIRC_Msk;
+	switch(m) {
+		case Mode::CircularMode:
+			{{ reg }} |= {{ prefix }}_CIRC;
+			break;
+		case Mode::Normal:
+		default:
+			// nothing to do
+			break;
+	}
 }
 %% endif
 
@@ -159,7 +133,7 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::acquire(Context* context)
 }
 
 void
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::release()
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::releaseLater()
 {
 	// releases instantly, DMA transfer may still be active
 }
@@ -167,16 +141,48 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::release()
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::stop()
 {
+	{{ reg }} &= ~{{ prefix}}_EN;
+	while({{ reg }} & {{ prefix }}_EN); // wait for slot to be stopped
 }
 
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::start()
 {
+	// Reset TCIF
+
+%% if target["platform"] = "f4"
+%% if slot_id <= 3
+	return ({{ instance }}->LISR &= ~DMA_LISR_TCIF{{ slot_id }}); 
+%% elif
+	return ({{ instance }}->HISR &= ~DMA_HISR_TCIF{{ slot_id }}); 
+%% endif
+%% else
+	// TODO L4/F3/...
+%% endif
+
+	{{ reg }} |= {{ prefix}}_EN;
 }
 
 bool
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 {
+%% if target["platform"] = "f4"
+%% if slot_id <= 3
+	return ({{ instance }}->LISR & DMA_LISR_TCIF{{ slot_id }}); 
+%% elif
+	return ({{ instance }}->HISR & DMA_HISR_TCIF{{ slot_id }}); 
+%% endif
+%% else
+	// TODO L4/F3/...
+	return false;
+%% endif
+/* old code:
+%% if target["family"] == "f4"
+	return !({{ reg }} & {{ prefix }}_EN);
+%% else
+	return (DMA{{ id }}->ISR & DMA_ISR_TCIF{{ slot_id }});
+%% endif
+*/
 }
 
 void

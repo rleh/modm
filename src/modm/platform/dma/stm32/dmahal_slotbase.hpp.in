@@ -107,7 +107,7 @@ public:
 	// stores the context once another driver acquires
 
 	virtual void
-	release() = 0;
+	releaseLater() = 0;
 	// releases instantly, DMA transfer may still be active
 
 	virtual void

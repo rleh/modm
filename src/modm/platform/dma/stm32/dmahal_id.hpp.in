@@ -27,7 +27,7 @@
  */
 
 // TODO: generate 'slots' from modm module code
-lots = range(0,8)
+slots = range(0,8)
 
 namespace modm::platform
 {
@@ -80,7 +80,7 @@ public:
 		// stores the context once another driver acquires
 
 		void
-		release() override;
+		releaseLater() override;
 		// releases instantly, DMA transfer may still be active
 
 		void
