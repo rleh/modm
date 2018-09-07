@@ -26,6 +26,7 @@ class Instance(Module):
     def build(self, env):
         device = env[":target"]
 
+        """
         properties = device.properties
         properties["target"] = device.identifier
         properties["partname"] = device.partname
@@ -36,6 +37,7 @@ class Instance(Module):
 
         env.template("dma.hpp.in", "dma_{}.hpp".format(self.instance))
         env.template("dma_impl.hpp.in", "dma_{}_impl.hpp".format(self.instance))
+        """
 
 def init(module):
     module.name = "dma"
@@ -60,11 +62,24 @@ def prepare(module, options):
 def build(env):
     device = env[":target"]
 
+    print(device.get_driver("dma"))
+    exit(42)
+
     properties = device.properties
     properties["target"] = device.identifier
     properties["partname"] = device.partname
+    properties["ids"] = device.get_driver("dma")["instance"]
+
+    features = {
+        "double_buffer": False,
+        "circular_mode": False,
+        "request_mux": True,
+        "burst": False,
+    }
+    properties["feature"] = features
 
     env.substitutions = properties
     env.outbasepath = "modm/src/modm/platform/dma"
 
-    env.template("dma_base.hpp.in")
+    env.template("dmahal.hpp.in")
+    env.template("dmahal_slotbase.hpp.in")

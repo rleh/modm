@@ -26,12 +26,8 @@
  * @defgroup	{{partname}}_dma DMA
  */
 
-// TODO: move into modm module code
-%% if target["family"] == "f4"
-	%% set slots = range(0,8)
-%% elif target["family"] == "f3"
-	// TODO
-%% endif
+// TODO: generate 'slots' from modm module code
+lots = range(0,8)
 
 namespace modm::platform
 {

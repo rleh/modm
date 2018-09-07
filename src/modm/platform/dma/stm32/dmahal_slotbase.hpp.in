@@ -16,6 +16,9 @@
 #include <stdint.h>
 #include "../device.hpp"
 
+// TODO remove:
+%% set reg_prefix = "DMA_SxCR"
+
 namespace modm::platform
 {
 
@@ -158,14 +161,19 @@ protected:
 	enum class
 	Channel : uint32_t
 	{
-		Channel0 = 0,
-		Channel1 = DMA_SxCR_CHSEL_0,
-		Channel2 = DMA_SxCR_CHSEL_1,
-		Channel3 = DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
-		Channel4 = DMA_SxCR_CHSEL_2,
-		Channel5 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_0,
-		Channel6 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1,
-		Channel7 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
+		%% if target["family"] == "f4"
+		%% set chsel_position = "DMA_SxCR_CHSEL_Pos"
+		%% else
+		%% set chsel_position = "DMA_SxCR_CHSEL_Pos"
+		%% endif
+		Channel0 = 0b000 << {{ chsel_position }},
+		Channel1 = 0b001 << {{ chsel_position }},
+		Channel2 = 0b010 << {{ chsel_position }},
+		Channel3 = 0b011 << {{ chsel_position }},
+		Channel4 = 0b100 << {{ chsel_position }},
+		Channel5 = 0b101 << {{ chsel_position }},
+		Channel6 = 0b110 << {{ chsel_position }},
+		Channel7 = 0b111 << {{ chsel_position }},
 	};
 %% endif
 
