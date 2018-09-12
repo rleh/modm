@@ -28,10 +28,6 @@ def build(env):
     device = env[":target"]
     driver = device.get_driver("dma")
 
-    #import json
-    #print(json.dumps(driver, indent=2))
-    #exit(42)
-
     properties = device.properties
     properties["target"] = device.identifier
     properties["partname"] = device.partname
@@ -48,6 +44,38 @@ def build(env):
         "burst": False,
     }
     properties["feature"] = features
+
+    def findInstance(stream, id):
+        for s in stream:
+            if s["instance"] == str(id):
+                return s
+        return None
+
+
+    import json
+    peripherals = []
+    mux = {}
+    if driver["type"] == "stm32-stream-channel":
+        for dma_id in properties["ids"]:
+            streamlist = findInstance(driver["streams"], dma_id)["stream"]
+            for stream in streamlist:
+                for channel in stream["channel"]:
+                    for signal in channel["signal"]:
+                        name = signal["driver"].capitalize() + (signal["instance"] if "instance" in signal else "") + signal["name"].capitalize()
+                        peripherals.append(name)
+                        if name not in mux:
+                            mux[name] = []
+                        mux[name].append(dict(instance=dma_id, slot=stream["position"], channel=stream["position"], request=channel["position"]))
+    else:
+        raise NotImplementedError
+
+
+    print(json.dumps(sorted(set(peripherals)), indent=2))
+    print(json.dumps(mux, indent=2))
+
+    properties["peripherals"] = peripherals
+    properties["mux"] = mux
+
 
     # TODO WIP
     properties["slots"] = range(0,8)
