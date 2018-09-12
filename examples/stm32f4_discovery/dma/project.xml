@@ -2,7 +2,7 @@
 <library>
   <extends>../../../src/modm/board/disco_f407vg/board.xml</extends>
   <options>
-    <option name=":build:build.path">../../../build/stm32f4_discovery/blink</option>
+    <option name=":build:build.path">../../../build/stm32f4_discovery/dma</option>
   </options>
   <modules>
     <module>:build:scons</module>

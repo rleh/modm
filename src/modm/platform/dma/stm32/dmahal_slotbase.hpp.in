@@ -16,6 +16,9 @@
 #include <stdint.h>
 #include "../device.hpp"
 
+#include <modm/architecture/interface/register.hpp>
+#include <modm/utils/bit_constants.hpp>
+
 %% set prefix = "DMA_SxCR"
 
 namespace modm::platform
@@ -23,9 +26,12 @@ namespace modm::platform
 
 class DmaHalSlotInterface
 {
+
 public:
 	virtual
 	~DmaHalSlotInterface() = default;
+
+	DmaHalSlotInterface() = default;
 
 	DmaHalSlotInterface(const DmaHalSlotInterface&) = delete;
 	DmaHalSlotInterface& operator=(const DmaHalSlotInterface&) = delete;

@@ -15,6 +15,8 @@
 
 #include <modm/board.hpp>
 
+#include <modm/platform/dma/dmahal.hpp>
+
 using namespace Board;
 
 // ----------------------------------------------------------------------------
@@ -25,6 +27,9 @@ main()
 
 	LedOrange::set();
 	LedRed::set();
+
+	modm::platform::DmaHal1 dmaHal1;
+	dmaHal1.slot1.reset();
 
 	while (1)
 	{

@@ -60,4 +60,4 @@ def build(env):
     for dma_id in properties["ids"]:
         properties["id"] = dma_id
         env.template("dmahal_id.hpp.in", "dmahal_{}.hpp".format(dma_id))
-        env.template("dmahal_impl.hpp.in", "dmahal_{}_impl.hpp".format(dma_id))
+        env.template("dmahal_id.cpp.in", "dmahal_{}.cpp".format(dma_id))

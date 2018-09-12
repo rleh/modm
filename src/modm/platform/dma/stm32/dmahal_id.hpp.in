@@ -48,7 +48,7 @@ public:
 		peripheralToMemory{{ type }}(volatile uint32_t* peripheral, uint{{ type }}_t* memory) override;
 		void
 		memoryToMemory{{ type }}(uint{{ type }}_t*, uint{{ type }}_t*) override;
-		%% if target["family"] == "f4"
+		%% if feature["double_buffer"]
 		void
 		memoryToPeripheral{{ type }}(uint{{ type }}_t* memory1, uint{{ type }}_t* memory2, volatile uint32_t* peripheral) override;
 		void
@@ -65,8 +65,7 @@ public:
 		void
 		setPriority(Priority p) override;
 
-		%% if target["family"] == "f4"
-		// every f4?
+		%% if feature["circular_mode"]
 		void
 		setMode(Mode m) override;
 		%% endif
@@ -103,7 +102,5 @@ public:
 };
 
 }	// namespace modm::platform
-
-#include "dmahal_{{ id }}_impl.hpp"
 
 #endif	// MODM_STM32_DMAHAL{{ id }}_HPP

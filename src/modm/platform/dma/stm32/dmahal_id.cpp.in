@@ -10,9 +10,7 @@
  */
 // ----------------------------------------------------------------------------
 
-#ifndef MODM_STM32_DMAHAL{{ id }}_HPP
-#	error 	"Don't include this file directly, use 'dmahal_{{ id }}.hpp' instead!"
-#endif
+#include "dmahal.hpp"
 
 %% if target["family"] == "f4"
 	%% set slots = range(0,8)
@@ -45,6 +43,7 @@
 	%% set prefix = "DMA_CCR"
 %% endif
 
+using Interface = modm::platform::DmaHalSlotInterface;
 
 %% set pointer_types = [8, 16, 32]
 %% for type in pointer_types
@@ -92,19 +91,25 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::peripheralToMemory{{ type }}(
 %% endfor
 
 void
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::reset()
+{
+	// TODO
+}
+
+void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setTransferLength(uint16_t length)
 {
 	{{ length }} = length;
 }
 
 void
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setIncrement(PeripheralIncrementMode p, MemoryIncrementMode m)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setIncrement(Interface::PeripheralIncrementMode p, Interface::MemoryIncrementMode m)
 {
 	{{ reg }} = ({{ reg }} & ~({{ prefix }}_PINC_Msk | {{ prefix }}_MINC_Msk)) | static_cast<uint32_t>(p) | static_cast<uint32_t>(m);
 }
 
 void
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setPriority(Priority p)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setPriority(Interface::Priority p)
 {
 	uint8_t priorityValues[4] = {0b00, 0b01, 0b10, 0b11};
 	{{ reg }} = ({{ reg }} & ~{{ prefix }}_PINC_Msk) | (priorityValues[static_cast<uint32_t>(p)] << {{ prefix }}_PL_Pos);
@@ -112,7 +117,7 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setPriority(Priority p)
 
 %% if feature["circular_mode"]
 void
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setMode(Mode m)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setMode(Interface::Mode m)
 {
 	{{ reg }} &= ~{{ prefix }}_CIRC_Msk;
 	switch(m) {
@@ -128,8 +133,10 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setMode(Mode m)
 %% endif
 
 bool
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::acquire(Context* context)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::acquire(Interface::Context* context)
 {
+	(void) context;
+	return true;
 	// waits until isFinished() (if any transfer has ever been started)
 	// stores the context once another driver acquires
 }
@@ -188,20 +195,22 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 }
 
 void
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Peripheral p)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Interface::Peripheral p)
 {
 	switch(p) {
-		case Spi1Tx:
-		break;
+		case Peripheral::Spi1Tx:
+			break;
+		default:
+			break;
 	}
 }
 
 bool
-modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isAvailable(Peripheral p, FeatureMap_t features)
+modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isAvailable(Interface::Peripheral p, Interface::FeatureMap_t features)
 {
+	(void) features;
 	switch(p) {
-		case Spi1Tx:
-		case Uart3Tx:
+		case Peripheral::Spi1Tx:
 			return true;
 		default:
 			return false;
