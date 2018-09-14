@@ -12,6 +12,8 @@
 
 #include "dmahal.hpp"
 
+using Interface = modm::platform::DmaHalSlotInterface;
+
 %% if target["family"] == "f4"
 	%% set slots = range(0,8)
 %% elif target["family"] == "f3"
@@ -42,8 +44,6 @@
 	%% set length = slot ~ "->CNDTR"
 	%% set prefix = "DMA_CCR"
 %% endif
-
-using Interface = modm::platform::DmaHalSlotInterface;
 
 %% set pointer_types = [8, 16, 32]
 %% for type in pointer_types
@@ -198,8 +198,22 @@ void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Interface::Peripheral p)
 {
 	switch(p) {
-		case Peripheral::Spi1Tx:
+		%% for p_name, p_data in mux.items()
+		case Peripheral::{{ p_name }}:
+			%% set vars = {"available": False}
+			%% for x in p_data
+				%% if x["instance"] == id
+				%% if x["slot"] == slot_id
+				%% if vars.update({"available": True, "request": x["request"]})
+				%% endif
+				%% endif
+				%% endif
+			%% endfor
+			%% if vars.available
+			{{ reg }} = ({{ reg }} & ~{{ prefix }}_CHSEL_Msk) | ({{ vars.request }} << {{ prefix }}_CHSEL_Pos);
+			%% endif
 			break;
+		%% endfor
 		default:
 			break;
 	}
@@ -210,8 +224,23 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isAvailable(Interface::Periph
 {
 	(void) features;
 	switch(p) {
-		case Peripheral::Spi1Tx:
+		%% for p_name, p_data in mux.items()
+		case Peripheral::{{ p_name }}:
+			%% set vars = {"available": False}
+			%% for x in p_data
+				%% if x["instance"] == id
+				%% if x["slot"] == slot_id
+				%% if vars.update({"available": True})
+				%% endif
+				%% endif
+				%% endif
+			%% endfor
+			%% if vars.available
 			return true;
+			%% else
+			return false;
+			%% endif
+		%% endfor
 		default:
 			return false;
 	}

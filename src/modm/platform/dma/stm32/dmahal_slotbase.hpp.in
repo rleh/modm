@@ -128,11 +128,9 @@ public:
 	isFinished() = 0;
 
 	enum class Peripheral {
-		Spi1Tx,
-		Spi1Rx,
-		Foo,
-		Bar,
-		// TODO code generation HERE!!1!11!!
+		%% for p in mux
+		{{ p }},
+		%% endfor
 	};
 
 	virtual void

@@ -77,7 +77,7 @@ public:
 
 		void
 		releaseLater() override;
-		// releases instantly, DMA transfer may still be active
+		// DMA transfer may still be active
 
 		void
 		stop() override;

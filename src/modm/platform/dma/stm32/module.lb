@@ -53,7 +53,7 @@ def build(env):
 
 
     import json
-    peripherals = []
+    import collections
     mux = {}
     if driver["type"] == "stm32-stream-channel":
         for dma_id in properties["ids"]:
@@ -62,18 +62,18 @@ def build(env):
                 for channel in stream["channel"]:
                     for signal in channel["signal"]:
                         name = signal["driver"].capitalize() + (signal["instance"] if "instance" in signal else "") + signal["name"].capitalize()
-                        peripherals.append(name)
                         if name not in mux:
                             mux[name] = []
-                        mux[name].append(dict(instance=dma_id, slot=stream["position"], channel=stream["position"], request=channel["position"]))
+                        mux[name].append(dict(instance=int(dma_id), slot=int(stream["position"]), request=int(channel["position"])))
     else:
         raise NotImplementedError
 
-
-    print(json.dumps(sorted(set(peripherals)), indent=2))
+    mux = collections.OrderedDict(sorted(mux.items()))
+    #peripherals = sorted(list(mux.keys()))
+    #print(json.dumps(peripherals, indent=2))
     print(json.dumps(mux, indent=2))
 
-    properties["peripherals"] = peripherals
+    #properties["peripherals"] = peripherals
     properties["mux"] = mux
 
 
@@ -86,6 +86,6 @@ def build(env):
     env.template("dmahal.hpp.in")
     env.template("dmahal_slotbase.hpp.in")
     for dma_id in properties["ids"]:
-        properties["id"] = dma_id
+        properties["id"] = int(dma_id)
         env.template("dmahal_id.hpp.in", "dmahal_{}.hpp".format(dma_id))
         env.template("dmahal_id.cpp.in", "dmahal_{}.cpp".format(dma_id))
