@@ -19,8 +19,6 @@
 #include <modm/architecture/interface/register.hpp>
 #include <modm/utils/bit_constants.hpp>
 
-%% set prefix = "DMA_SxCR"
-
 namespace modm::platform
 {
 
@@ -60,14 +58,14 @@ public:
 	MemoryIncrementMode : uint32_t
 	{
 		Fixed 		= 0,
-		Increment 	= {{ prefix }}_MINC, ///< incremented according to MemoryDataSize
+		Increment 	= {{ reg_prefix }}_MINC, ///< incremented according to MemoryDataSize
 	};
 
 	enum class
 	PeripheralIncrementMode : uint32_t
 	{
 		Fixed 		= 0,
-		Increment 	= {{ prefix }}_PINC, ///< incremented according to PeripheralDataSize
+		Increment 	= {{ reg_prefix }}_PINC, ///< incremented according to PeripheralDataSize
 	};
 
 	virtual void
@@ -149,13 +147,6 @@ public:
 	isAvailable(Peripheral p, FeatureMap_t features) = 0;
 };
 
-
-%% if target["family"] == "f4"
-	%% set prefix = "DMA_SxCR"
-%% elif target["family"] == "f3"
-	%% set prefix = "DMA_CCR"
-%% endif
-
 class DmaHalSlotBase : public DmaHalSlotInterface
 {
 protected:
@@ -164,19 +155,14 @@ protected:
 	enum class
 	Channel : uint32_t
 	{
-		%% if target["family"] == "f4"
-		%% set chsel_position = "DMA_SxCR_CHSEL_Pos"
-		%% else
-		%% set chsel_position = "DMA_SxCR_CHSEL_Pos"
-		%% endif
-		Channel0 = 0b000 << {{ chsel_position }},
-		Channel1 = 0b001 << {{ chsel_position }},
-		Channel2 = 0b010 << {{ chsel_position }},
-		Channel3 = 0b011 << {{ chsel_position }},
-		Channel4 = 0b100 << {{ chsel_position }},
-		Channel5 = 0b101 << {{ chsel_position }},
-		Channel6 = 0b110 << {{ chsel_position }},
-		Channel7 = 0b111 << {{ chsel_position }},
+		Channel0 = 0b000,
+		Channel1 = 0b001,
+		Channel2 = 0b010,
+		Channel3 = 0b011,
+		Channel4 = 0b100,
+		Channel5 = 0b101,
+		Channel6 = 0b110,
+		Channel7 = 0b111,
 	};
 %% endif
 
@@ -185,17 +171,17 @@ protected:
 	MemoryBurstTransfer : uint32_t
 	{
 		Single 		= 0,
-		Increment4 	= DMA_SxCR_MBURST_0,
-		Increment8 	= DMA_SxCR_MBURST_1,
-		Increment16 = DMA_SxCR_MBURST_1 | DMA_SxCR_MBURST_0,
+		Increment4 	= {{ reg_prefix }}_MBURST_0,
+		Increment8 	= {{ reg_prefix }}_MBURST_1,
+		Increment16 = {{ reg_prefix }}_MBURST_1 | {{ reg_prefix }}_MBURST_0,
 	};
 	enum class
 	PeripheralBurstTransfer : uint32_t
 	{
 		Single 		= 0,
-		Increment4 	= DMA_SxCR_PBURST_0,
-		Increment8 	= DMA_SxCR_PBURST_1,
-		Increment16 = DMA_SxCR_PBURST_1 | DMA_SxCR_PBURST_0,
+		Increment4 	= {{ reg_prefix }}_PBURST_0,
+		Increment8 	= {{ reg_prefix }}_PBURST_1,
+		Increment16 = {{ reg_prefix }}_PBURST_1 | {{ reg_prefix }}_PBURST_0,
 	};
 %% endif
 
@@ -206,9 +192,9 @@ protected:
 	{
 		Byte 		= 0,
 		Bit8 		= Byte,
-		HalfWord 	= {{ prefix }}_MSIZE_0,
+		HalfWord 	= {{ reg_prefix }}_MSIZE_0,
 		Bit16 		= HalfWord,
-		Word 		= {{ prefix }}_MSIZE_1,
+		Word 		= {{ reg_prefix }}_MSIZE_1,
 		Bit32 		= Word,
 	};
 
@@ -217,25 +203,25 @@ protected:
 	{
 		Byte 		= 0,
 		Bit8 		= Byte,
-		HalfWord 	= {{ prefix }}_PSIZE_0,
+		HalfWord 	= {{ reg_prefix }}_PSIZE_0,
 		Bit16 		= HalfWord,
-		Word 		= {{ prefix }}_PSIZE_1,
+		Word 		= {{ reg_prefix }}_PSIZE_1,
 		Bit32 		= Word,
 	};
 
-%% if target["family"] == "f4"
+%% if type == "stm32-stream-channel"
 	enum class
 	DataTransferDirection : uint32_t
 	{
 		/// Source: DMA_SxPAR; Sink: DMA_SxM0AR
 		PeripheralToMemory 	= 0,
 		/// Source: DMA_SxM0AR; Sink: DMA_SxPAR
-		MemoryToPeripheral 	= DMA_SxCR_DIR_0,
+		MemoryToPeripheral 	= {{ reg_prefix }}_DIR_0,
 		/// Source: DMA_SxPAR; Sink: DMA_SxM0AR
-		MemoryToMemory 		= DMA_SxCR_DIR_1,
+		MemoryToMemory 		= {{ reg_prefix }}_DIR_1,
 	};
-	static constexpr uint32_t DataTransferDirectionMask = DMA_SxCR_DIR_0 | DMA_SxCR_DIR_1;
-%% elif target["family"] == "f3"
+	static constexpr uint32_t DataTransferDirectionMask = {{ reg_prefix }}_DIR_0 | {{ reg_prefix }}_DIR_1;
+%% elif type == "stm32-channel-request"
 	enum class
 	DataTransferDirection : uint32_t
 	{
@@ -252,20 +238,20 @@ protected:
 protected:
 %% if target["family"] == "f4"
 	static constexpr uint32_t memoryMask =
-			DMA_SxCR_MBURST_1 | DMA_SxCR_MBURST_0 |	// MemoryBurstTransfer
-			DMA_SxCR_MSIZE_0  | DMA_SxCR_MSIZE_1  |	// MemoryDataSize
-			DMA_SxCR_MINC                         |	// MemoryIncrementMode
-			DMA_SxCR_DIR_0    | DMA_SxCR_DIR_1;    	// DataTransferDirection
+			{{ reg_prefix }}_MBURST_1 | {{ reg_prefix }}_MBURST_0 |	// MemoryBurstTransfer
+			{{ reg_prefix }}_MSIZE_0  | {{ reg_prefix }}_MSIZE_1  |	// MemoryDataSize
+			{{ reg_prefix }}_MINC                         |	// MemoryIncrementMode
+			{{ reg_prefix }}_DIR_0    | {{ reg_prefix }}_DIR_1;    	// DataTransferDirection
 	static constexpr uint32_t peripheralMask =
-			DMA_SxCR_PBURST_1 | DMA_SxCR_PBURST_0 |	// PeripheralBurstTransfer
-			DMA_SxCR_PSIZE_0  | DMA_SxCR_PSIZE_1  |	// PeripheralDataSize
-			DMA_SxCR_PINC                         |	// PeripheralIncrementMode
-			DMA_SxCR_DIR_0    | DMA_SxCR_DIR_1;    	// DataTransferDirection
+			{{ reg_prefix }}_PBURST_1 | {{ reg_prefix }}_PBURST_0 |	// PeripheralBurstTransfer
+			{{ reg_prefix }}_PSIZE_0  | {{ reg_prefix }}_PSIZE_1  |	// PeripheralDataSize
+			{{ reg_prefix }}_PINC                         |	// PeripheralIncrementMode
+			{{ reg_prefix }}_DIR_0    | {{ reg_prefix }}_DIR_1;    	// DataTransferDirection
 	static constexpr uint32_t configmask =
-			DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0 |	// Channel
-			DMA_SxCR_PL_1    | DMA_SxCR_PL_0    |						// Priority
-			DMA_SxCR_CIRC    |											// CircularMode
-			DMA_SxCR_PFCTRL;											// FlowControl
+			{{ reg_prefix }}_CHSEL_2 | {{ reg_prefix }}_CHSEL_1 | {{ reg_prefix }}_CHSEL_0 |	// Channel
+			{{ reg_prefix }}_PL_1    | {{ reg_prefix }}_PL_0    |						// Priority
+			{{ reg_prefix }}_CIRC    |											// CircularMode
+			{{ reg_prefix }}_PFCTRL;											// FlowControl
 %% elif target["family"] == "f3"
 	static constexpr uint32_t memoryMask =
 			DMA_CCR_MSIZE_0  | DMA_CCR_MSIZE_1  |	// MemoryDataSize

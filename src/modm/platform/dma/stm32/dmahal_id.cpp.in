@@ -14,35 +14,22 @@
 
 using Interface = modm::platform::DmaHalSlotInterface;
 
-%% if target["family"] == "f4"
-	%% set slots = range(0,8)
-%% elif target["family"] == "f3"
-	%% if id == 1
-		%% set slots = range(1,7)
-	%% elif id == 2
-		%% set slots = range(1,5)
-	%% endif
-%% endif
-
 %% for slot_id in slots
 
 %% set instance = "DMA" ~ id
-// if type == "stm32-stream-channel"
-%% if target["family"] == "f4"
+%% if type == "stm32-stream-channel"
 	%% set slot = instance ~ "_Stream" ~ slot_id
 	%% set reg = slot ~ "->CR"
 	%% set mem = slot ~ "->M0AR"
 	%% set per = slot ~ "->PAR"
 	%% set length = slot ~ "->NDTR"
-	%% set prefix = "DMA_SxCR"
-// if type == "stm32-channel-request"
-%% elif target["family"] == "f3" or target["family"] == "l4"
+%% elif type == "stm32-channel-request" or type == "stm32-channel"
 	%% set slot = instance ~ "_Channel" ~ slot_id
 	%% set reg = slot ~ "->CCR"
 	%% set mem = slot ~ "->CMAR"
 	%% set per = slot ~ "->CPAR"
 	%% set length = slot ~ "->CNDTR"
-	%% set prefix = "DMA_CCR"
+	%% set cselr = instance ~ "_CSELR->CSELR"
 %% endif
 
 %% set pointer_types = [8, 16, 32]
@@ -105,24 +92,24 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setTransferLength(uint16_t le
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setIncrement(Interface::PeripheralIncrementMode p, Interface::MemoryIncrementMode m)
 {
-	{{ reg }} = ({{ reg }} & ~({{ prefix }}_PINC_Msk | {{ prefix }}_MINC_Msk)) | static_cast<uint32_t>(p) | static_cast<uint32_t>(m);
+	{{ reg }} = ({{ reg }} & ~({{ reg_prefix }}_PINC_Msk | {{ reg_prefix }}_MINC_Msk)) | static_cast<uint32_t>(p) | static_cast<uint32_t>(m);
 }
 
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setPriority(Interface::Priority p)
 {
 	uint8_t priorityValues[4] = {0b00, 0b01, 0b10, 0b11};
-	{{ reg }} = ({{ reg }} & ~{{ prefix }}_PINC_Msk) | (priorityValues[static_cast<uint32_t>(p)] << {{ prefix }}_PL_Pos);
+	{{ reg }} = ({{ reg }} & ~{{ reg_prefix }}_PINC_Msk) | (priorityValues[static_cast<uint32_t>(p)] << {{ reg_prefix }}_PL_Pos);
 }
 
 %% if feature["circular_mode"]
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::setMode(Interface::Mode m)
 {
-	{{ reg }} &= ~{{ prefix }}_CIRC_Msk;
+	{{ reg }} &= ~{{ reg_prefix }}_CIRC_Msk;
 	switch(m) {
 		case Mode::CircularMode:
-			{{ reg }} |= {{ prefix }}_CIRC;
+			{{ reg }} |= {{ reg_prefix }}_CIRC;
 			break;
 		case Mode::Normal:
 		default:
@@ -150,8 +137,8 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::releaseLater()
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::stop()
 {
-	{{ reg }} &= ~{{ prefix}}_EN;
-	while({{ reg }} & {{ prefix }}_EN); // wait for slot to be stopped
+	{{ reg }} &= ~{{ reg_prefix }}_EN;
+	while({{ reg }} & {{ reg_prefix }}_EN); // wait for slot to be stopped
 }
 
 void
@@ -169,13 +156,13 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::start()
 	// TODO L4/F3/...
 %% endif
 
-	{{ reg }} |= {{ prefix}}_EN;
+	{{ reg }} |= {{ reg_prefix }}_EN;
 }
 
 bool
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 {
-%% if target["platform"] == "f4"
+%% if type == "stm32-stream-channel"
 %% if slot_id <= 3
 	return ({{ instance }}->LISR & DMA_LISR_TCIF{{ slot_id }}); 
 %% else
@@ -187,7 +174,7 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 %% endif
 /* old code:
 %% if target["family"] == "f4"
-	return !({{ reg }} & {{ prefix }}_EN);
+	return !({{ reg }} & {{ reg_prefix }}_EN);
 %% else
 	return (DMA{{ id }}->ISR & DMA_ISR_TCIF{{ slot_id }});
 %% endif
@@ -200,7 +187,11 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Interface::Peripheral
 	switch(p) {
 		%% for p, r in peripherals_available[slot_id].items()
 		case Peripheral::{{ p }}:
-			{{ reg }} = ({{ reg }} & ~{{ prefix }}_CHSEL_Msk) | ({{ r }} << {{ prefix }}_CHSEL_Pos);
+			%% if type == "stm32-stream-channel"
+			{{ reg }} = ({{ reg }} & ~{{ reg_prefix }}_CHSEL_Msk) | ({{ r }} << {{ reg_prefix }}_CHSEL_Pos);
+			%% elif type == "stm32-channel-request"
+			{{ cselr }} = ({{ cselr }} & ~DMA_CSELR_C{{ slot_id }}S_Msk) | ({{ r }} << DMA_CSELR_C{{ slot_id }}S_Pos);
+			%% endif
 			break;
 		%% endfor
 		default:

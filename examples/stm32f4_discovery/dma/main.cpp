@@ -25,18 +25,18 @@ main()
 {
 	initialize();
 
-	LedOrange::set();
-	LedRed::set();
+	//LedOrange::set();
+	//LedRed::set();
 
 	modm::platform::DmaHal1 dmaHal1;
 	dmaHal1.slot1.reset();
 
 	while (1)
 	{
-		LedBlue::toggle();
+		/*LedBlue::toggle();
 		LedGreen::toggle();
 		LedOrange::toggle();
-		LedRed::toggle();
+		LedRed::toggle();*/
 		modm::delayMilliseconds(Button::read() ? 250 : 500);
 	}
 

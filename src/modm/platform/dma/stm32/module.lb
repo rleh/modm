@@ -64,10 +64,34 @@ def build(env):
                         if name not in mux:
                             mux[name] = []
                         mux[name].append(dict(instance=int(dma_id), slot=int(stream["position"]), request=int(channel["position"])))
+    elif driver["type"] == "stm32-channel-request":
+        for dma_id in properties["ids"]:
+            channellist = findInstance(driver["channels"], dma_id)["channel"]
+            #import json
+            #print(json.dumps(channellist, indent=2))
+            for channel in channellist:
+                for request in channel["request"]:
+                    for signal in request["signal"]:
+                        name = signal["driver"].capitalize() + (signal["instance"] if "instance" in signal else "") + signal["name"].capitalize()
+                        if name not in mux:
+                            mux[name] = []
+                        mux[name].append(dict(instance=int(dma_id), slot=int(channel["position"]), request=int(request["position"])))
+
+    elif driver["type"] == "stm32-channel":
+        # TODO
+        raise NotImplementedError
     else:
+        print("DMA driver type: " + driver["type"])
         raise NotImplementedError
     mux = collections.OrderedDict(sorted(mux.items()))
     properties["peripherals"] = list(mux.keys())
+
+    if driver["type"] == "stm32-stream-channel":
+        properties["reg_prefix"] = "DMA_SxCR"
+    elif driver["type"] == "stm32-channel-request":
+        properties["reg_prefix"] = "DMA_CCR"
+    else:
+        raise NotImplementedError
 
     env.substitutions = properties
     env.outbasepath = "modm/src/modm/platform/dma"
