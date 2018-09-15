@@ -74,24 +74,19 @@ def build(env):
                         if name not in mux:
                             mux[name] = []
                         mux[name].append(dict(instance=int(dma_id), slot=int(channel["position"]), request=int(request["position"])))
-
     elif driver["type"] == "stm32-channel":
-        # TODO
         for dma_id in properties["ids"]:
             channellist = driver["channels"][0]["channel"]
             for channel in channellist:
-                #import json
-                #print(json.dumps(channel, indent=2))
-                #exit(42)
                 for signal in channel["signal"]:
                     name = signal["driver"].capitalize() + (signal["instance"] if "instance" in signal else "") + signal["name"].capitalize()
                     if name not in mux:
                         mux[name] = []
                     mux[name].append(dict(instance=int(dma_id), slot=int(channel["position"])))
-
     else:
         print("DMA driver type: " + driver["type"])
         raise NotImplementedError
+
     mux = collections.OrderedDict(sorted(mux.items()))
     properties["peripherals"] = list(mux.keys())
 
@@ -99,9 +94,10 @@ def build(env):
         properties["reg_prefix"] = "DMA_SxCR"
     elif driver["type"] == "stm32-channel-request":
         properties["reg_prefix"] = "DMA_CCR"
-    if driver["type"] == "stm32-channel":
+    elif driver["type"] == "stm32-channel":
         properties["reg_prefix"] = "DMA_CCR"
     else:
+        print("DMA driver type: " + driver["type"])
         raise NotImplementedError
 
     env.substitutions = properties
