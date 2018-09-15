@@ -83,15 +83,14 @@ public:
 	virtual void
 	setPriority(Priority p) = 0;
 
-	%% if feature["circular_mode"]
-	// every f4?
 	enum class Mode : uint8_t {
 		Normal = 0,
+		%% if feature["circular_mode"]
 		CircularMode = 1,
+		%% endif
 	};
 	virtual void
 	setMode(Mode m) = 0;
-	%% endif
 
 	struct Context
 	{
@@ -236,7 +235,7 @@ protected:
 %% endif
 
 protected:
-%% if target["family"] == "f4"
+%% if type == "stm32-stream-channel"
 	static constexpr uint32_t memoryMask =
 			{{ reg_prefix }}_MBURST_1 | {{ reg_prefix }}_MBURST_0 |	// MemoryBurstTransfer
 			{{ reg_prefix }}_MSIZE_0  | {{ reg_prefix }}_MSIZE_1  |	// MemoryDataSize
@@ -252,7 +251,7 @@ protected:
 			{{ reg_prefix }}_PL_1    | {{ reg_prefix }}_PL_0    |						// Priority
 			{{ reg_prefix }}_CIRC    |											// CircularMode
 			{{ reg_prefix }}_PFCTRL;											// FlowControl
-%% elif target["family"] == "f3"
+%% elif type == "stm32-channel-request"
 	static constexpr uint32_t memoryMask =
 			DMA_CCR_MSIZE_0  | DMA_CCR_MSIZE_1  |	// MemoryDataSize
 			DMA_CCR_MINC                        |	// MemoryIncrementMode

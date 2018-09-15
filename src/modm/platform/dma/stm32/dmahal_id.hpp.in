@@ -65,10 +65,8 @@ public:
 		void
 		setPriority(Priority p) override;
 
-		%% if feature["circular_mode"]
 		void
 		setMode(Mode m) override;
-		%% endif
 
 		bool
 		acquire(Context* context) override;
