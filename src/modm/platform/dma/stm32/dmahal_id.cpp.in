@@ -183,6 +183,7 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isFinished()
 void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Interface::Peripheral p)
 {
+%% if not type == "stm32-channel"
 	switch(p) {
 		%% for p, r in peripherals_available[slot_id].items()
 		case Peripheral::{{ p }}:
@@ -196,6 +197,10 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Interface::Peripheral
 		default:
 			break;
 	}
+%% else
+	(void) p;
+	// this STM32 device has an OR-gate instead of a programmable request mux
+%% endif
 }
 
 bool

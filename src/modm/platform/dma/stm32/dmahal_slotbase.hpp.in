@@ -220,7 +220,7 @@ protected:
 		MemoryToMemory 		= {{ reg_prefix }}_DIR_1,
 	};
 	static constexpr uint32_t DataTransferDirectionMask = {{ reg_prefix }}_DIR_0 | {{ reg_prefix }}_DIR_1;
-%% elif type == "stm32-channel-request"
+%% elif type == "stm32-channel-request" or type == "stm32-channel"
 	enum class
 	DataTransferDirection : uint32_t
 	{

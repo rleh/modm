@@ -4,8 +4,9 @@
   <extends>../../../src/modm/board/disco_f407vg/board.xml</extends>
   <extends>../../../src/modm/board/nucleo_l432kc/board.xml</extends>
   <extends>../../../src/modm/board/disco_f303vc/board.xml</extends>
+  <extends>../../../src/modm/board/disco_f072rb/board.xml</extends>
 -->
-  <extends>../../../src/modm/board/disco_f407vg/board.xml</extends>
+  <extends>../../../src/modm/board/disco_f072rb/board.xml</extends>
   <options>
     <option name=":build:build.path">../../../build/dma_tests/dma</option>
   </options>

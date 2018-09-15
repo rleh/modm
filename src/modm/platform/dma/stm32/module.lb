@@ -67,8 +67,6 @@ def build(env):
     elif driver["type"] == "stm32-channel-request":
         for dma_id in properties["ids"]:
             channellist = findInstance(driver["channels"], dma_id)["channel"]
-            #import json
-            #print(json.dumps(channellist, indent=2))
             for channel in channellist:
                 for request in channel["request"]:
                     for signal in request["signal"]:
@@ -79,7 +77,18 @@ def build(env):
 
     elif driver["type"] == "stm32-channel":
         # TODO
-        raise NotImplementedError
+        for dma_id in properties["ids"]:
+            channellist = driver["channels"][0]["channel"]
+            for channel in channellist:
+                #import json
+                #print(json.dumps(channel, indent=2))
+                #exit(42)
+                for signal in channel["signal"]:
+                    name = signal["driver"].capitalize() + (signal["instance"] if "instance" in signal else "") + signal["name"].capitalize()
+                    if name not in mux:
+                        mux[name] = []
+                    mux[name].append(dict(instance=int(dma_id), slot=int(channel["position"])))
+
     else:
         print("DMA driver type: " + driver["type"])
         raise NotImplementedError
@@ -89,6 +98,8 @@ def build(env):
     if driver["type"] == "stm32-stream-channel":
         properties["reg_prefix"] = "DMA_SxCR"
     elif driver["type"] == "stm32-channel-request":
+        properties["reg_prefix"] = "DMA_CCR"
+    if driver["type"] == "stm32-channel":
         properties["reg_prefix"] = "DMA_CCR"
     else:
         raise NotImplementedError
@@ -115,7 +126,10 @@ def build(env):
                     if r["instance"] == int(dma_id) and r["slot"] == slot_id:
                         available = True
                 if available:
-                    _peripherals_available[p_name] = r["request"]
+                    if not driver["type"] == "stm32-channel":
+                        _peripherals_available[p_name] = r["request"]
+                    else:
+                        _peripherals_available[p_name] = True
             peripherals_available[slot_id] = _peripherals_available
 
         properties["id"] = int(dma_id)
