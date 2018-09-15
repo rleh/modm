@@ -128,7 +128,7 @@ public:
 	isFinished() = 0;
 
 	enum class Peripheral {
-		%% for p in mux
+		%% for p in peripherals
 		{{ p }},
 		%% endfor
 	};

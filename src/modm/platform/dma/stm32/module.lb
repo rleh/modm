@@ -11,6 +11,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # -----------------------------------------------------------------------------
 
+import collections
+
 def init(module):
     module.name = "dma"
     module.parent = "platform"
@@ -51,9 +53,6 @@ def build(env):
                 return s
         return None
 
-
-    import json
-    import collections
     mux = {}
     if driver["type"] == "stm32-stream-channel":
         for dma_id in properties["ids"]:
@@ -67,18 +66,8 @@ def build(env):
                         mux[name].append(dict(instance=int(dma_id), slot=int(stream["position"]), request=int(channel["position"])))
     else:
         raise NotImplementedError
-
     mux = collections.OrderedDict(sorted(mux.items()))
-    #peripherals = sorted(list(mux.keys()))
-    #print(json.dumps(peripherals, indent=2))
-    print(json.dumps(mux, indent=2))
-
-    #properties["peripherals"] = peripherals
-    properties["mux"] = mux
-
-
-    # TODO WIP
-    properties["slots"] = range(0,8)
+    properties["peripherals"] = list(mux.keys())
 
     env.substitutions = properties
     env.outbasepath = "modm/src/modm/platform/dma"
@@ -86,6 +75,28 @@ def build(env):
     env.template("dmahal.hpp.in")
     env.template("dmahal_slotbase.hpp.in")
     for dma_id in properties["ids"]:
+        slots = []
+        for _, l in mux.items():
+            for i in l:
+                if i["instance"] == int(dma_id):
+                    slots.append(i["slot"])
+        slots = sorted(set(slots))
+
+        peripherals_available = {}
+        for slot_id in slots:
+            _peripherals_available = {}
+            for p_name, p_data in mux.items():
+                available = False
+                for r in p_data:
+                    if r["instance"] == int(dma_id) and r["slot"] == slot_id:
+                        available = True
+                if available:
+                    _peripherals_available[p_name] = r["request"]
+            peripherals_available[slot_id] = _peripherals_available
+
         properties["id"] = int(dma_id)
+        properties["slots"] = slots
+        properties["peripherals_available"] = peripherals_available
+
         env.template("dmahal_id.hpp.in", "dmahal_{}.hpp".format(dma_id))
         env.template("dmahal_id.cpp.in", "dmahal_{}.cpp".format(dma_id))

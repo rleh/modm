@@ -198,20 +198,9 @@ void
 modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::connect(Interface::Peripheral p)
 {
 	switch(p) {
-		%% for p_name, p_data in mux.items()
-		case Peripheral::{{ p_name }}:
-			%% set vars = {"available": False}
-			%% for x in p_data
-				%% if x["instance"] == id
-				%% if x["slot"] == slot_id
-				%% if vars.update({"available": True, "request": x["request"]})
-				%% endif
-				%% endif
-				%% endif
-			%% endfor
-			%% if vars.available
-			{{ reg }} = ({{ reg }} & ~{{ prefix }}_CHSEL_Msk) | ({{ vars.request }} << {{ prefix }}_CHSEL_Pos);
-			%% endif
+		%% for p, r in peripherals_available[slot_id].items()
+		case Peripheral::{{ p }}:
+			{{ reg }} = ({{ reg }} & ~{{ prefix }}_CHSEL_Msk) | ({{ r }} << {{ prefix }}_CHSEL_Pos);
 			break;
 		%% endfor
 		default:
@@ -224,23 +213,10 @@ modm::platform::DmaHal{{ id }}::Slot{{ slot_id }}::isAvailable(Interface::Periph
 {
 	(void) features;
 	switch(p) {
-		%% for p_name, p_data in mux.items()
-		case Peripheral::{{ p_name }}:
-			%% set vars = {"available": False}
-			%% for x in p_data
-				%% if x["instance"] == id
-				%% if x["slot"] == slot_id
-				%% if vars.update({"available": True})
-				%% endif
-				%% endif
-				%% endif
-			%% endfor
-			%% if vars.available
-			return true;
-			%% else
-			return false;
-			%% endif
+		%% for p in peripherals_available[slot_id]
+		case Peripheral::{{ p }}:
 		%% endfor
+			return true;
 		default:
 			return false;
 	}
