@@ -1,0 +1,115 @@
+/*
+ * Copyright (c) 2011-2012, 2017, Fabian Greif
+ * Copyright (c) 2012-2014, 2016-2017, Sascha Schade
+ * Copyright (c) 2013-2014, 2016, Kevin Läufer
+ * Copyright (c) 2014, Georgi Grinshpun
+ * Copyright (c) 2014, 2016-2018, Niklas Hauser
+ * Copyright (c) 2018, Christopher Durand
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+#include <modm/debug/error_report.hpp>
+#include <modm/architecture/driver/atomic/queue.hpp>
+#include <modm/utils.hpp>
+#include <modm/architecture/interface/assert.hpp>
+#include <modm/architecture/interface/interrupt.hpp>
+#include <modm/architecture/interface/delay.hpp>
+
+#include "can.hpp"
+
+// ----------------------------------------------------------------------------
+%% if options["buffer.tx"] > 0
+static modm::atomic::Queue<modm::can::Message, {{ options["buffer.tx"] }}> txQueue;
+%% endif
+%% if options["buffer.rx"] > 0
+static modm::atomic::Queue<modm::can::Message, {{ options["buffer.rx"] }}> rxQueue;
+%% endif
+
+
+void
+modm::platform::Can::setMode(Mode mode)
+{
+
+}
+
+// ----------------------------------------------------------------------------
+void
+modm::platform::Can::setAutomaticRetransmission(bool retransmission)
+{
+
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can::isMessageAvailable()
+{
+%% if options["buffer.rx"] > 0
+	return rxQueue.isNotEmpty();
+%% else
+	// Check if there are any messages pending in the receive registers
+	return false; // TODO
+%% endif
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can::getMessage(can::Message& message)
+{
+%% if options["buffer.rx"] > 0
+	if (rxQueue.isEmpty())
+	{
+		// no message in the receive buffer
+		return false;
+	}
+	else {
+		memcpy(&message, &rxQueue.get(), sizeof(message));
+		rxQueue.pop();
+		return true;
+	}
+%% else
+	// TODO
+	return false;
+%% endif
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can::isReadyToSend()
+{
+%% if options["buffer.tx"] > 0
+	return txQueue.isNotFull();
+%% else
+	return true; // TODO
+%% endif
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can::sendMessage(const can::Message& message)
+{
+	return true; // TODO
+}
+
+// ----------------------------------------------------------------------------
+modm::platform::Can::BusState
+modm::platform::Can::getBusState()
+{
+	if (true) {
+		return BusState::Off;
+	}
+	else if (false) {
+		return BusState::ErrorPassive;
+	}
+	else if (false) {
+		return BusState::ErrorWarning;
+	}
+	else {
+		return BusState::Connected;
+	}
+}

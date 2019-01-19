@@ -1,0 +1,175 @@
+/*
+ * Copyright (c) 2013-2014, 2016, Kevin Läufer
+ * Copyright (c) 2014, 2017, Sascha Schade
+ * Copyright (c) 2014-2018, Niklas Hauser
+ * Copyright (c) 2017, Fabian Greif
+ * Copyright (c) 2018, Christopher Durand
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+#ifndef MODM_AT90_CAN_HPP
+#define MODM_AT90_CAN_HPP
+
+#include <modm/architecture/interface/can.hpp>
+#include <modm/platform/gpio/connector.hpp>
+#include "../device.hpp"
+
+#include "can_bit_timings.hpp"
+#include "error_code.hpp"
+#include "can_filter.hpp"
+
+using namespace modm::clock; // for MHzxx
+
+namespace modm
+{
+
+namespace platform
+{
+
+/**
+ * @brief		Basic Extended CAN
+ *
+ * The Basic Extended CAN peripheral, named bxCAN, interfaces the CAN
+ * network. It supports the CAN protocols version 2.0A and B. It has
+ * been designed to manage a high number of incoming messages
+ * efficiently with a minimum CPU load.
+ *
+ * ## Filter
+ *
+ * For connectivity line devices there are 28 filter banks,
+ * i=0 .. 27, in other devices there are 14 filter banks i = 0 ..13.
+ *
+ * The 28 filter banks for the connectivity line devices are
+ * shared between CAN1 and CAN2.
+ *
+ * ## Configuration
+ * You can set the buffer size using the `tx_buffer` and `rx_buffer` parameters.
+ *
+ * @author		Fabian Greif <fabian.greif@rwth-aachen.de>
+ * @ingroup		modm_platform_can{% if id | length %} modm_platform_can_{{id}}{% endif %}
+ */
+class Can : public ::modm::Can
+{
+public:
+	enum class
+	Mode : uint8_t
+	{
+		Normal		= 0, // TODO
+		ListenOnly	= 42, // TODO
+		LoopBack	= 42, // TODO
+		ListenOnlyLoopBack	= 42, // TODO
+	};
+
+	// Expose jinja template parameters to be checked by e.g. drivers or application
+	static constexpr size_t RxBufferSize = {{ options["buffer.rx"] }};
+	static constexpr size_t TxBufferSize = {{ options["buffer.tx"] }};
+
+public:
+	template< template<Peripheral _> class... Signals >
+	static void
+	connect(Gpio::InputType inputType = Gpio::InputType::Floating)
+	{
+		using Connector = GpioConnector<Peripheral::Can, Signals...>;
+		using Tx = typename Connector::template GetSignal< Gpio::Signal::Tx >;
+		using Rx = typename Connector::template GetSignal< Gpio::Signal::Rx >;
+		static_assert(Connector::template IsValid<Tx> and Connector::template IsValid<Rx> and sizeof...(Signals) == 2,
+					  "Can::connect() requires one Tx and one Rx signal!");
+
+		// Connector::disconnect();
+		Tx::setOutput(Gpio::OutputType::PushPull);
+		Rx::setInput(inputType);
+		Connector::connect();
+	}
+
+	/**
+	 * Enables the clock for the CAN controller and resets all settings
+	 *
+	 * \param bitrate
+	 * 			CAN bitrate (defined in driver/connectivity/can/message.hpp)
+	 * \param interruptPriority
+	 * 			Interrupt vector priority (0=highest to 15=lowest)
+	 * \param overwriteOnOverrun
+	 * 			Once a receive FIFO is full the next incoming message
+	 * 			will overwrite the previous one if \c true otherwise
+	 * 			the incoming message will be discarded
+	 *
+	 * \warning	Has to called after connect(), but before any
+	 * 			other function from this class!
+	 */
+	template< class SystemClock, uint32_t bitrate = Bitrate::kBps125,
+			uint16_t tolerance = Tolerance::OnePercent >
+	static inline void
+	initialize(	uint32_t interruptPriority, Mode startupMode = Mode::Normal,
+				bool overwriteOnOverrun = true)
+	{
+		return false;
+	}
+
+	/**
+	 * The the operating mode.
+	 *
+	 * Default after initialization is the normal mode.
+	 */
+	static void
+	setMode(Mode mode);
+
+	static void
+	setAutomaticRetransmission(bool retransmission);
+
+public:
+	// Can Interface Methods
+	static bool
+	isMessageAvailable();
+
+	static bool
+	getMessage(can::Message& message);
+
+	static bool
+	isReadyToSend();
+
+	static bool
+	sendMessage(const can::Message& message);
+
+public:
+	// Extended Functionality
+	/**
+	 * Get Receive Error Counter.
+	 *
+	 * In case of an error during reception, this counter is
+	 * incremented by 1 or by 8 depending on the error condition as
+	 * defined by the CAN standard. After every successful reception
+	 * the counter is decremented by 1 or reset to 120 if its value
+	 * was higher than 128. When the counter value exceeds 127, the
+	 * CAN controller enters the error passive state.
+	 */
+	static inline uint8_t
+	getReceiveErrorCounter()
+	{
+		return 42; // TODO
+	}
+
+	/**
+	 * Get Transmit Error Counter.
+	 *
+	 */
+	static inline uint8_t
+	getTransmitErrorCounter()
+	{
+		return 42; // TODO
+	}
+
+	static BusState
+	getBusState();
+};
+
+}	// namespace platform
+
+}	// namespace modm
+
+#endif	//  MODM_AT90_CAN_HPP
