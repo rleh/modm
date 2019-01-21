@@ -46,7 +46,8 @@ class Instance(Module):
         env.template("spi_hal_impl.hpp.in", "spi_hal_{}_impl.hpp".format(self.instance))
         env.template("spi_master.hpp.in", "spi_master_{}.hpp".format(self.instance))
         env.template("spi_master.cpp.in", "spi_master_{}.cpp".format(self.instance))
-
+        env.template("spi_bidi_master.hpp.in", "spi_bidi_master_{}.hpp".format(self.instance))
+        env.template("spi_bidi_master.cpp.in", "spi_bidi_master_{}.cpp".format(self.instance))
 
 def init(module):
     module.name = "spi"

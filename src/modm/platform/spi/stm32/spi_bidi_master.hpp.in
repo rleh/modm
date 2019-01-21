@@ -5,6 +5,7 @@
  * Copyright (c) 2012, Georgi Grinshpun
  * Copyright (c) 2013, Kevin Läufer
  * Copyright (c) 2014, Sascha Schade
+ * Copyright (c) 2019, Christopher Durand
  *
  * This file is part of the modm project.
  *
@@ -14,8 +15,8 @@
  */
 // ----------------------------------------------------------------------------
 
-#ifndef MODM_STM32_SPI_MASTER{{ id }}_HPP
-#define MODM_STM32_SPI_MASTER{{ id }}_HPP
+#ifndef MODM_STM32_SPI_BIDI_MASTER{{ id }}_HPP
+#define MODM_STM32_SPI_BIDI_MASTER{{ id }}_HPP
 
 #include <modm/architecture/interface/spi_master.hpp>
 #include <modm/platform/gpio/connector.hpp>
@@ -28,14 +29,14 @@ namespace platform
 {
 
 /**
- * Serial peripheral interface (SPI{{ id }}).
+ * Serial peripheral interface (SPI{{ id }}) in bidirectional half-duplex mode.
  *
  * Simple unbuffered implementation.
  *
- * @author	Niklas Hauser
+ * @author	Christopher Durand
  * @ingroup	modm_platform_spi modm_platform_spi_{{id}}
  */
-class SpiMaster{{ id }} : public modm::SpiMaster
+class SpiBidiMaster{{ id }} : public modm::SpiMaster
 {
 	static uint8_t state;
 	static uint8_t count;
@@ -69,16 +70,13 @@ public:
 		using Connector = GpioConnector<Peripheral::Spi{{ id }}, Signals...>;
 		using Sck = typename Connector::template GetSignal<Gpio::Signal::Sck>;
 		using Mosi = typename Connector::template GetSignal<Gpio::Signal::Mosi>;
-		using Miso = typename Connector::template GetSignal<Gpio::Signal::Miso>;
 		static_assert(Connector::template IsValid<Sck> and Connector::template IsValid<Mosi> and
-					  ((not Connector::template IsValid<Miso> and sizeof...(Signals) == 2) or
-					   (    Connector::template IsValid<Miso> and sizeof...(Signals) == 3)),
-					  "SpiMaster{{id}}::connect() requires one Sck and one Mosi and optionally one Miso signal!");
+					  sizeof...(Signals) == 2,
+					  "SpiMaster{{id}}::connect() requires one Sck and one Mosi signal!");
 
 		// Connector::disconnect();
 		Sck::setOutput(Gpio::OutputType::PushPull);
 		Mosi::setOutput(Gpio::OutputType::PushPull);
-		Miso::setInput(Gpio::InputType::Floating);
 		Connector::connect();
 	}
 
@@ -121,7 +119,9 @@ public:
 
 		// initialize the Spi
 		SpiHal{{ id }}::initialize(prescaler);
-		SpiHal{{ id }}::setSpiTransactionEnabled(true);
+
+		// set half duplex mode
+		SpiHal{{ id }}::setDuplexMode(SpiHal{{ id }}::DuplexMode::HalfDuplex);
 		state = 0;
 	}
 
@@ -145,24 +145,49 @@ public:
 	release(void *ctx);
 
 
-	static uint8_t
-	transferBlocking(uint8_t data)
+	static void
+	writeBlocking(uint8_t data)
 	{
-		return RF_CALL_BLOCKING(transfer(data));
+		RF_CALL_BLOCKING(write(data));
+	}
+
+	static uint8_t
+	readBlocking()
+	{
+		return RF_CALL_BLOCKING(read());
 	}
 
 	static void
-	transferBlocking(uint8_t *tx, uint8_t *rx, std::size_t length)
+	writeBlocking(const uint8_t* tx, std::size_t length)
 	{
-		RF_CALL_BLOCKING(transfer(tx, rx, length));
+		RF_CALL_BLOCKING(write(tx, length));
 	}
 
-
-	static modm::ResumableResult<uint8_t>
-	transfer(uint8_t data);
+	static void
+	readBlocking(uint8_t* rx, std::size_t length)
+	{
+		RF_CALL_BLOCKING(read(rx, length));
+	}
 
 	static modm::ResumableResult<void>
-	transfer(uint8_t *tx, uint8_t *rx, std::size_t length);
+	write(uint8_t data);
+
+	static modm::ResumableResult<uint8_t>
+	read();
+
+	static modm::ResumableResult<void>
+	write(const uint8_t* tx, std::size_t length);
+
+	static modm::ResumableResult<void>
+	read(uint8_t* rx, std::size_t length);
+
+//private:
+	static modm::ResumableResult<void>
+	writeMultiByte(uint8_t data);
+
+	static modm::ResumableResult<uint8_t>
+ 	readMultiByte();
+
 	// end documentation inherited
 };
 
@@ -170,4 +195,4 @@ public:
 
 } // namespace modm
 
-#endif // MODM_STM32_SPI_MASTER{{ id }}_HPP
+#endif // MODM_STM32_SPI_BIDI_MASTER{{ id }}_HPP

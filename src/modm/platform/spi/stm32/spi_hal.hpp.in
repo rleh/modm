@@ -55,6 +55,10 @@ public:
 				DataOrder dataOrder = DataOrder::MsbFirst,
 				DataSize  dataSize  = DataSize::Bit8);
 
+
+	static void
+	setSpiTransactionEnabled(bool enabled);
+
 	static void
 	setDataMode(DataMode dataMode);
 
@@ -67,6 +71,13 @@ public:
 	static void
 	setMasterSelection(MasterSelection masterSelection);
 
+	static void
+	setDuplexMode(DuplexMode mode);
+
+	/// Set data direction in half duplex mode
+	static void
+	setDataDirection(DataDirection direction);
+
 	/// Returns true if data has been received
 	static bool
 	isReceiveRegisterNotEmpty();
@@ -74,6 +85,9 @@ public:
 	/// Returns true if data can be written
 	static bool
 	isTransmitRegisterEmpty();
+
+	static bool
+	isBusy();
 
 	/**
 	 * Write up to 16 Bit to the data register

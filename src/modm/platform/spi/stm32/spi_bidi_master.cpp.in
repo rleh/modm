@@ -1,0 +1,318 @@
+/*
+ * Copyright (c) 2009, Martin Rosekeit
+ * Copyright (c) 2009-2012, Fabian Greif
+ * Copyright (c) 2010, Georgi Grinshpun
+ * Copyright (c) 2012-2017, Niklas Hauser
+ * Copyright (c) 2013, Kevin Läufer
+ * Copyright (c) 2014, Sascha Schade
+ * Copyright (c) 2019, Christopher Durand
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+#include "spi_bidi_master_{{id}}.hpp"
+
+// Bit0: single write transfer state
+// Bit1: single read transfer state
+// Bit2: block write transfer state
+// Bit3: block read transfer state
+uint8_t
+modm::platform::SpiBidiMaster{{ id }}::state(0);
+
+uint8_t
+modm::platform::SpiBidiMaster{{ id }}::count(0);
+
+void *
+modm::platform::SpiBidiMaster{{ id }}::context(nullptr);
+
+modm::Spi::ConfigurationHandler
+modm::platform::SpiBidiMaster{{ id }}::configuration(nullptr);
+// ----------------------------------------------------------------------------
+
+uint8_t
+modm::platform::SpiBidiMaster{{ id }}::acquire(void *ctx, ConfigurationHandler handler)
+{
+	if (context == nullptr)
+	{
+		context = ctx;
+		count = 1;
+		// if handler is not nullptr and is different from previous configuration
+		if (handler and configuration != handler) {
+			configuration = handler;
+			configuration();
+		}
+		return 1;
+	}
+
+	if (ctx == context)
+		return ++count;
+
+	return 0;
+}
+
+uint8_t
+modm::platform::SpiBidiMaster{{ id }}::release(void *ctx)
+{
+	if (ctx == context)
+	{
+		if (--count == 0)
+			context = nullptr;
+	}
+	return count;
+}
+// ----------------------------------------------------------------------------
+
+modm::ResumableResult<void>
+modm::platform::SpiBidiMaster{{ id }}::write(uint8_t data)
+{
+	// this is a manually implemented "fast resumable function"
+	// there is no context or nesting protection, since we don't need it.
+	// there are only two states encoded into 1 bit (LSB of state):
+	//   1. waiting to start, and
+	//   2. waiting to finish.
+
+	// LSB != Bit0 ?
+	if ( !(state & Bit0) )
+	{
+		// wait for previous transfer to finish
+		if (!SpiHal{{ id }}::isTransmitRegisterEmpty()) {
+			return {modm::rf::Running};
+		}
+
+		// set write mode
+		SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Output);
+
+		// start SPI transaction
+		SpiHal{{ id }}::setSpiTransactionEnabled(true);
+
+		// start transfer by copying data into register
+		SpiHal{{ id }}::write(data);
+
+		// set LSB = Bit0
+		state |= Bit0;
+	}
+
+	if (!SpiHal{{ id }}::isTransmitRegisterEmpty()) {
+		return {modm::rf::Running};
+	}
+
+	if (SpiHal{{ id }}::isBusy()) {
+		return {modm::rf::Running};
+	}
+
+	// stop SPI transaction
+	SpiHal{{ id }}::setSpiTransactionEnabled(false);
+
+	// transfer finished
+	state &= ~Bit0;
+	return {modm::rf::Stop};
+}
+
+modm::ResumableResult<uint8_t>
+modm::platform::SpiBidiMaster{{ id }}::read()
+{
+	// this is a manually implemented "fast resumable function"
+	// there is no context or nesting protection, since we don't need it.
+	// there are only two states encoded into 1 bit (LSB of state):
+	//   1. waiting to start, and
+	//   2. waiting to finish.
+
+	// LSB != Bit1 ?
+	if ( !(state & Bit1) )
+	{
+		// set read mode
+		SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
+
+		// start transfer
+		SpiHal{{ id }}::setSpiTransactionEnabled(true);
+
+		// set LSB = Bit0
+		state |= Bit1;
+	}
+
+	if (!SpiHal{{ id }}::isReceiveRegisterNotEmpty()) {
+		return {modm::rf::Running};
+	}
+
+	uint8_t data = 0;
+	SpiHal{{ id }}::read(data);
+	SpiHal{{ id }}::setSpiTransactionEnabled(false);
+
+	// transfer finished
+	state &= ~Bit1;
+	return {modm::rf::Stop, data};
+}
+
+modm::ResumableResult<void>
+modm::platform::SpiBidiMaster{{ id }}::writeMultiByte(uint8_t data)
+{
+	// this is a manually implemented "fast resumable function"
+	// there is no context or nesting protection, since we don't need it.
+	// there are only two states encoded into 1 bit (LSB of state):
+	//   1. waiting to start, and
+	//   2. waiting to finish.
+
+	// LSB != Bit0 ?
+	if ( !(state & Bit0) )
+	{
+		// wait for previous transfer to finish
+		if (!SpiHal{{ id }}::isTransmitRegisterEmpty()) {
+			return {modm::rf::Running};
+		}
+
+		// start transfer by copying data into register
+		SpiHal{{ id }}::write(data);
+
+		// set LSB = Bit0
+		state |= Bit0;
+	}
+
+	if (!SpiHal{{ id }}::isTransmitRegisterEmpty()) {
+		return {modm::rf::Running};
+	}
+
+	// transfer finished
+	state &= ~Bit0;
+	return {modm::rf::Stop};
+}
+
+modm::ResumableResult<uint8_t>
+modm::platform::SpiBidiMaster{{ id }}::readMultiByte()
+{
+	// this is a manually implemented "fast resumable function"
+	// there is no context or nesting protection, since we don't need it.
+	// there are only two states encoded into 1 bit (LSB of state):
+	//   1. waiting to start, and
+	//   2. waiting to finish.
+
+	// LSB != Bit1 ?
+	if ( !(state & Bit1) ) {
+		// set LSB = Bit0
+		state |= Bit1;
+	}
+
+	if (!SpiHal{{ id }}::isReceiveRegisterNotEmpty()) {
+		return {modm::rf::Running};
+	}
+
+	uint8_t data = 0;
+	SpiHal{{ id }}::read(data);
+
+	// transfer finished
+	state &= ~Bit1;
+	return {modm::rf::Stop, data};
+}
+
+
+modm::ResumableResult<void>
+modm::platform::SpiBidiMaster{{ id }}::write(const uint8_t* tx, std::size_t length)
+{
+	// this is a manually implemented "fast resumable function"
+	// there is no context or nesting protection, since we don't need it.
+	// there are only two states encoded into 1 bit (Bit2 of state):
+	//   1. initialize index, and
+	//   2. wait for 1-byte transfer to finish.
+
+	// we need to globally remember which byte we are currently transferring
+	static std::size_t index = 0;
+
+	// we are only interested in Bit2
+	switch(state & Bit2)
+	{
+		case 0:
+			// we will only visit this state once
+			state |= Bit2;
+
+			// set write mode
+			SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Output);
+
+			// start SPI transaction
+			SpiHal{{ id }}::setSpiTransactionEnabled(true);
+
+			// initialize index and check range
+			index = 0;
+			while (index < length)
+			{
+		default:
+		{
+				modm::ResumableResult<void> result = writeMultiByte(tx[index]);
+
+				// if the resumable function is still running, so are we
+				if (result.getState() > modm::rf::NestingError) {
+					return {modm::rf::Running};
+				}
+		}
+				index++;
+			}
+
+			// wait for completion and stop SPI transaction
+			if (SpiHal{{ id }}::isBusy())
+				return {modm::rf::Running};
+
+			SpiHal{{ id }}::setSpiTransactionEnabled(false);
+			SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
+
+			// clear the state
+			state &= ~Bit2;
+			return {modm::rf::Stop};
+	}
+}
+
+modm::ResumableResult<void>
+modm::platform::SpiBidiMaster{{ id }}::read(uint8_t* rx, std::size_t length)
+{
+	// this is a manually implemented "fast resumable function"
+	// there is no context or nesting protection, since we don't need it.
+	// there are only two states encoded into 1 bit (Bit1 of state):
+	//   1. initialize index, and
+	//   2. wait for 1-byte transfer to finish.
+
+	// we need to globally remember which byte we are currently transferring
+	static std::size_t index = 0;
+
+	// we are only interested in Bit3
+	switch(state & Bit3)
+	{
+		case 0:
+			// we will only visit this state once
+
+			// set read mode
+			SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
+
+			// start transfer
+			SpiHal{{ id }}::setSpiTransactionEnabled(true);
+
+			state |= Bit3;
+
+			// initialize index and check range
+			index = 0;
+			while (index < length)
+			{
+		default:
+		{
+				// call the resumable function
+				modm::ResumableResult<uint8_t> result = readMultiByte();
+
+				// if the resumable function is still running, so are we
+				if (result.getState() > modm::rf::NestingError)
+					return {modm::rf::Running};
+
+				// if rx != 0, we copy the result into the array
+				if (rx) rx[index] = result.getResult();
+		}
+				index++;
+			}
+
+			// stop transfer
+			SpiHal{{ id }}::setSpiTransactionEnabled(false);
+
+			// clear the state
+			state &= ~Bit3;
+			return {modm::rf::Stop};
+	}
+}

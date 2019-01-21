@@ -91,6 +91,23 @@ public:
 	};
 
 	enum class
+	DuplexMode : uint16_t
+	{
+		FullDuplex 	= 0b0,
+		HalfDuplex 	= SPI_CR1_BIDIMODE,
+		All			= HalfDuplex
+	};
+
+	/// Data direction in half duplex mode
+	enum class
+	DataDirection : uint16_t
+	{
+		Input	= 0b0,
+		Output 	= SPI_CR1_BIDIOE,
+		All		= Output
+	};
+
+	enum class
 	DataSize : uint32_t
 	{
 %% if "data-size" in features

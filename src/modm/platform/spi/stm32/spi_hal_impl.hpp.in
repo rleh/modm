@@ -23,7 +23,7 @@ modm::platform::SpiHal{{ id }}::enable()
 	// reset spi
 	RCC->APB{{ apb }}RSTR{{ apb_post }} |=  RCC_APB{{ apb }}RSTR{{ apb_post }}_SPI{{ id }}RST;
 	RCC->APB{{ apb }}RSTR{{ apb_post }} &= ~RCC_APB{{ apb }}RSTR{{ apb_post }}_SPI{{ id }}RST;
-	SPI{{ id }}->CR1 |= SPI_CR1_SPE;		// SPI Enable
+	//SPI{{ id }}->CR1 |= SPI_CR1_SPE;		// SPI Enable
 }
 
 void inline
@@ -34,12 +34,21 @@ modm::platform::SpiHal{{ id }}::disable()
 }
 
 void inline
+modm::platform::SpiHal{{ id }}::setSpiTransactionEnabled(bool enable)
+{
+	if (enable) {
+		SPI{{ id }}->CR1 |= SPI_CR1_SPE;
+	} else {
+		SPI{{ id }}->CR1 &= ~SPI_CR1_SPE;
+	}
+}
+
+void inline
 modm::platform::SpiHal{{ id }}::initialize(Prescaler prescaler,
 		MasterSelection masterSelection, DataMode dataMode,
 		DataOrder dataOrder, DataSize dataSize)
 {
 	enable();
-	// disable peripheral
 	SPI{{ id }}->CR1 &= ~SPI_CR1_SPE;
 	// set parameters
 	SPI{{ id }}->CR1 = 	  static_cast<uint32_t>(dataMode)
@@ -61,8 +70,6 @@ modm::platform::SpiHal{{ id }}::initialize(Prescaler prescaler,
 	if(masterSelection == MasterSelection::Master) {
 		SPI{{ id }}->CR2 |=  SPI_CR2_SSOE; // for master mode
 	}
-	// reenable peripheral
-	SPI{{ id }}->CR1 |= SPI_CR1_SPE;
 }
 
 void inline
@@ -100,6 +107,20 @@ modm::platform::SpiHal{{ id }}::setMasterSelection(MasterSelection masterSelecti
 										 | static_cast<uint32_t>(masterSelection);
 }
 
+inline void
+modm::platform::SpiHal{{ id }}::setDuplexMode(DuplexMode mode)
+{
+	SPI{{ id }}->CR1 = (SPI{{ id }}->CR1 & ~static_cast<uint32_t>(DuplexMode::All))
+										 | static_cast<uint32_t>(mode);
+}
+
+inline void
+modm::platform::SpiHal{{ id }}::setDataDirection(DataDirection direction)
+{
+	SPI{{ id }}->CR1 = (SPI{{ id }}->CR1 & ~static_cast<uint32_t>(DataDirection::All))
+										 | static_cast<uint32_t>(direction);
+}
+
 inline bool
 modm::platform::SpiHal{{ id }}::isReceiveRegisterNotEmpty()
 {
@@ -110,6 +131,12 @@ inline bool
 modm::platform::SpiHal{{ id }}::isTransmitRegisterEmpty()
 {
 	return static_cast<bool>(getInterruptFlags() & InterruptFlag::TxBufferEmpty);
+}
+
+inline bool
+modm::platform::SpiHal{{ id }}::isBusy()
+{
+	return static_cast<bool>(getInterruptFlags() & InterruptFlag::Busy);
 }
 
 void inline
