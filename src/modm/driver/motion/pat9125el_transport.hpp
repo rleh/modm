@@ -13,6 +13,7 @@
 #define MODM_PAT9125EL_TRANSPORT_HPP
 
 #include <modm/architecture/interface/i2c_device.hpp>
+#include <modm/architecture/interface/spi_device.hpp>
 #include <modm/processing/resumable.hpp>
 #include <array>
 
@@ -44,7 +45,31 @@ private:
 	std::array<uint8_t, 2> buffer;
 };
 
-// TODO: implement SPI transport layer
+/**
+ * PAT9125EL SPI transport layer
+ *
+ * @author Christopher Durand
+ * @ingroup modm_driver_pat9125el
+ */
+template<class SpiBidiMaster, class Cs>
+class Pat9125elSpiTransport : public modm::SpiDevice<SpiBidiMaster>, protected modm::NestedResumable<4>
+{
+protected:
+	Pat9125elSpiTransport();
+
+	modm::ResumableResult<bool>
+	write(uint8_t reg, uint8_t value);
+
+	modm::ResumableResult<bool>
+	read(uint8_t reg, uint8_t& value);
+
+	modm::ResumableResult<bool>
+	read(uint8_t reg, uint8_t* buffer, uint8_t length);
+
+private:
+	std::array<uint8_t, 2> buffer;
+	uint8_t index = 0;
+};
 
 }
 

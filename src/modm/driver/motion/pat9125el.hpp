@@ -125,7 +125,7 @@ public:
 	void
 	resetMoved();
 
-private:
+//private:
 	modm::ResumableResult<bool>
 	writeRegister(Register reg, uint8_t data);
 
@@ -135,6 +135,7 @@ private:
 	modm::ResumableResult<bool>
 	readRegister(Register reg, uint8_t* data, size_t size);
 
+private:
 	void
 	updateData();
 
