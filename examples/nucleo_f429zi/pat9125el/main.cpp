@@ -15,17 +15,23 @@
 #include <modm/processing/protothread.hpp>
 #include <modm/driver/motion/pat9125el.hpp>
 
-using I2c = I2cMaster1;
-using Scl = GpioB8;
-using Sda = GpioB9;
+//using I2c = I2cMaster1;
+//using Scl = GpioB8;
+//using Sda = GpioB9;
+
+using Spi = SpiBidiMaster3;
+using Sck = GpioB3;
+using Mosi = GpioB5;
+//using Sda = GpioB9;
 
 // int pin is optional, set to void for polling mode
-using Int = GpioInputA5;
+using Int = GpioInputB4;
+using Cs = GpioOutputF12;
 
 class Thread : public modm::pt::Protothread
 {
 public:
-	Thread() : sensor{0x75}
+	Thread()// : sensor{0x75}
 	{
 	}
 
@@ -47,7 +53,6 @@ public:
 		}
 		MODM_LOG_INFO << "Ping successful" << modm::endl;
 
-		// set x and y resolution
 		PT_CALL(sensor.configure(0x14, 0x14));
 
 		while (true)
@@ -67,10 +72,11 @@ public:
 		PT_END();
 	}
 
-private:
 	modm::ShortTimeout timeout;
 	modm::pat9125el::Motion2D position;
-	modm::Pat9125el<modm::Pat9125elI2cTransport<I2c>, Int> sensor;
+	modm::Pat9125el<modm::Pat9125elSpiTransport<Spi, Cs>, Int> sensor;
+	uint8_t value = 0;
+
 };
 
 Thread thread;
@@ -84,10 +90,17 @@ main()
 
 	MODM_LOG_INFO << "\n\nPAT9125EL I2C example\n\n";
 
-	I2c::connect<Sda::Sda, Scl::Scl>();
-	I2c::initialize<Board::systemClock, 400'000, modm::Tolerance::TwentyPercent>();
+	Cs::setOutput(true);
+	Sck::setOutput(false);
+	Mosi::setInput(Mosi::InputType::PullDown);
 
-	while (1) {
+	Int::setInput();
+
+	Spi::connect<Sck::Sck, Mosi::Mosi>();
+	Spi::initialize<Board::systemClock, 350'000, modm::Tolerance::TwentyPercent>();
+
+	while (1)
+	{
 		thread.update();
 	}
 
