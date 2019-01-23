@@ -1,0 +1,15 @@
+<library>
+  <extends>modm:board:disco-f407vg</extends>
+  <options>
+    <option name="modm:build:build.path">../../../build/stm32f4_discovery/pat9125el</option>
+  </options>
+  <modules>
+    <module>modm:driver:pat9125el</module>
+    <module>modm:io</module>
+    <module>modm:platform:uart:2</module>
+    <module>modm:platform:spi:*</module>
+    <module>modm:architecture:spi</module>
+    <module>modm:processing:protothread</module>
+    <module>modm:build:scons</module>
+  </modules>
+</library>
