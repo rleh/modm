@@ -43,15 +43,15 @@ namespace modm
  * @author	Kevin Laeufer
  * @ingroup	modm_platform_can_common
  */
-template<int32_t Clk, int32_t Bitrate>
+template<int32_t Clk, int32_t Bitrate, uint32_t bs1Max, uint32_t bs2Max, uint32_t sjwMax, uint32_t prescalerMax>
 class CanBitTiming
 {
 private:
 	struct CanBitTimingConfiguration {
-		uint8_t bs1;	// 1-16
-		uint8_t bs2;	// 1-8
-		uint8_t sjw;
-		uint16_t prescaler;
+		uint8_t bs1;	// 1..(bs1Max+1)
+		uint8_t bs2;	// 1..(bs2Max+1)
+		uint8_t sjw;	// 1..(sjwMax+1)
+		uint16_t prescaler; // 0..prescalerMax
 		float minError;
 	};
 
@@ -67,7 +67,7 @@ private:
 	static constexpr CanBitTimingConfiguration calculateBestConfig()
 	{
 		constexpr uint8_t minBs1Bs2 = 14;
-		constexpr uint8_t maxBs1Bs2 = 20;
+		constexpr uint8_t maxBs1Bs2 = bs1Max + 1 + bs2Max + 1;  // previous: 20
 
 		float minError = 10000;
 		uint16_t bestPrescaler = 0;
@@ -86,8 +86,9 @@ private:
 
 		uint8_t bs2 = round_uint32(0.275f * (bestBs1Bs2 + 1));
 		uint8_t bs1 = bestBs1Bs2 - bs2;
+		uint8_t sjw = std::min(sjwMax, std::min(bs1 - 1, (bs2 - 2)));
 
-		return CanBitTimingConfiguration{bs1, bs2, 1, bestPrescaler, minError};
+		return CanBitTimingConfiguration{bs1, bs2, sjw, bestPrescaler, minError};
 	}
 
 	static constexpr CanBitTimingConfiguration BestConfig = calculateBestConfig();
@@ -108,7 +109,10 @@ public:
 private:
 	// check assertions
 	static_assert(getPrescaler() > 0, "CAN bitrate is too high for standard bit timings!");
-	static_assert(getPrescaler() < ((1 << 10) - 1), "Prescaler value too large"); // 10 bit prescaler on STM32
+	static_assert(getPrescaler() < prescalerMax, "Prescaler value too large");
+	static_assert(getBS1() < bs1Max, "CAN phase segment 1 too large");
+	static_assert(getBS2() < bs2Max, "CAN phase segment 2 too large");
+
 };
 
 }	// namespace modm

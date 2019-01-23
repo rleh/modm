@@ -60,10 +60,15 @@ public:
 	enum class
 	Mode : uint8_t
 	{
-		Normal		= 0, // TODO
-		ListenOnly	= 42, // TODO
-		LoopBack	= 42, // TODO
-		ListenOnlyLoopBack	= 42, // TODO
+		Normal		= 0,
+		Listen		= 1,	/** Listening mode:
+							This mode is transparent for the CAN channel:
+							– enables a hardware loop back, internal TxCAN on internal RxCAN
+							– provides a recessive level on TXCAN output pin
+							– does not disable RXCAN input pin
+							– freezes TEC and REC error counters */
+		Loopback	= Listen, /// Same as Listen mode.
+
 	};
 
 	// Expose jinja template parameters to be checked by e.g. drivers or application
@@ -87,6 +92,11 @@ public:
 		Connector::connect();
 	}
 
+private:
+	void
+	modm::platform::Can::initializeWithPrescaler(
+		uint8_t prescaler, uint8_t bs1, uint8_t bs2,
+		uint8_t sjw, Mode startupMode, bool overwriteOnOverrun)
 	/**
 	 * Enables the clock for the CAN controller and resets all settings
 	 *
@@ -108,7 +118,21 @@ public:
 	initialize(	uint32_t interruptPriority, Mode startupMode = Mode::Normal,
 				bool overwriteOnOverrun = true)
 	{
-		return false;
+		constexpr uint32_t bs1Max = 15; //TODO
+		constexpr uint32_t bs2Max = 7; //TODO
+		constexpr uint32_t sjwMax = 3; //TODO
+		constexpr uint32_t prescalerMax = (1 << 6) - 1; //TODO
+		using Timings = CanBitTiming<SystemClock::Can{{ id }}, bitrate, bs1Max, bs2Max, sjwMax, prescalerMax>;
+
+		Timings::template assertBitrateInTolerance<tolerance>();
+
+		return initializeWithPrescaler(
+			Timings::getPrescaler(),
+			Timings::getBS1(),
+			Timings::getBS2(),
+			interruptPriority,
+			startupMode,
+			overwriteOnOverrun);
 	}
 
 	/**
@@ -151,7 +175,7 @@ public:
 	static inline uint8_t
 	getReceiveErrorCounter()
 	{
-		return 42; // TODO
+		return CANREC;
 	}
 
 	/**
@@ -161,7 +185,7 @@ public:
 	static inline uint8_t
 	getTransmitErrorCounter()
 	{
-		return 42; // TODO
+		return CANTEC;
 	}
 
 	static BusState

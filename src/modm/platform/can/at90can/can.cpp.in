@@ -1,10 +1,6 @@
 /*
- * Copyright (c) 2011-2012, 2017, Fabian Greif
- * Copyright (c) 2012-2014, 2016-2017, Sascha Schade
- * Copyright (c) 2013-2014, 2016, Kevin Läufer
- * Copyright (c) 2014, Georgi Grinshpun
- * Copyright (c) 2014, 2016-2018, Niklas Hauser
- * Copyright (c) 2018, Christopher Durand
+ * Copyright (c) 2008-2010, Fabian Greif
+ * Copyright (c) 2019, Raphael Lehmann
  *
  * This file is part of the modm project.
  *
@@ -33,17 +29,165 @@ static modm::atomic::Queue<modm::can::Message, {{ options["buffer.rx"] }}> rxQue
 
 
 void
+modm::platform::Can::initializeWithPrescaler(
+		uint8_t prescaler, uint8_t bs1, uint8_t bs2,
+		uint8_t sjw, Mode startupMode, bool overwriteOnOverrun)
+{
+	// switch CAN controller to reset mode
+	CANGCON |= (1 << SWRES);
+
+	// set CAN Bit Timing
+	uint8_t prs = (bs1 / 2) + ((bs1 % 2 ? 0 : 1));
+	uint8_t phs1 = (bs1 / 2);
+	uint8_t phs2 = bs2;
+	uint8_t smp = (prescaler > 0) ? 0b1 : 0b0;
+	CANBT1 = ((prescaler & 0b111111) << 1);
+	CANBT2 = ((sjw & 0b11) << 5) | ((prs & 0b111) << 1);
+	CANBT3 = ((phs2 & 0b111) << 4) | ((phs1 & 0b111) << 1) | smp;
+
+	// activate CAN transmit- and receive-interrupt
+	CANGIT = 0;
+	CANGIE = (1 << ENIT) | (1 << ENRX) | (1 << ENTX);
+
+	// set timer prescaler to 199 which results in a timer
+	// frequency of 10 kHz (at 16 MHz)
+	CANTCON = 199;
+
+	// disable all filters
+	disableFilter( CAN_ALL_FILTER );
+
+%% if options["buffer.rx"] > 0
+	bufferInit( &can_rx_buffer, CAN_RX_BUFFER_SIZE, can_rx_list );
+%% endif
+
+%% if options["buffer.tx"] > 0
+	bufferInit( &can_tx_buffer, CAN_TX_BUFFER_SIZE, can_tx_list );
+%% endif
+
+	// activate CAN controller
+	CANGCON = (1 << ENASTB);
+}
+
+void
+modm::platform::Can::disableFilter(uint8_t number)
+{
+	if (number == CAN_ALL_FILTER)
+	{
+		// disable interrupts
+		CANIE1 = 0;
+		CANIE2 = 0;
+
+		// disable all MObs
+		for (uint8_t i = 0;i < 15;i++) {
+			CANPAGE = (i << 4);
+
+			// disable MOb (read-write required)
+			CANCDMOB &= 0;
+			CANSTMOB &= 0;
+		}
+
+		// mark all MObs as free
+		%% if options["buffer.rx"] == 0
+		_messages_waiting = 0;
+		%% endif
+
+		%% if options["buffer.tx"] == 0
+		_free_buffer = 15;
+		%% endif
+
+		return true;
+	}
+	else
+	{
+		// set CAN Controller to standby mode
+		enterStandbyMode();
+
+		CANPAGE = number << 4;
+
+		// reset flags
+		CANSTMOB &= 0;
+		CANCDMOB = 0;
+
+		disableMobInterrupt(number);
+
+		// re-enable CAN Controller
+		leaveStandbyMode();
+	}
+}
+
+/// enter standby mode => messages are not transmitted nor received
+inline void
+modm::platform::Can::enterStandbyMode()
+{
+	// request abort
+	CANGCON = (1 << ABRQ);
+
+	// wait until receiver is not busy
+	while (CANGSTA & (1 << RXBSY))
+		;
+
+	// request standby mode
+	CANGCON = 0;
+
+	// wait until the CAN Controller has entered standby mode
+	while (CANGSTA & (1 << ENFG))
+		;
+}
+
+/// leave standby mode => CAN Controller is connected to CAN Bus
+inline void
+modm::platform::Can::leaveStandbyMode()
+{
+	// save CANPAGE register
+	uint8_t canpage = CANPAGE;
+
+	// reenable all MObs
+	for (uint8_t i=0;i<15;i++) {
+		CANPAGE = i << 4;
+		CANCDMOB = CANCDMOB;
+	}
+
+	// restore CANPAGE
+	CANPAGE = canpage;
+
+	// request normal mode
+	CANGCON = (1 << ENASTB);
+
+	// wait until the CAN Controller has left standby mode
+	while ((CANGSTA & (1 << ENFG)) == 0)
+		;
+}
+
+/// disable interrupt of corresponding MOb
+void
+modm::platform::Can::disableMobInterrupt(uint8_t mob)
+{
+	if (mob < 8)
+		CANIE2 &= ~(1 << mob);
+	else
+		CANIE1 &= ~(1 << (mob - 8));
+}
+
+void
 modm::platform::Can::setMode(Mode mode)
 {
-
+	if(mode == Mode::Normal) {
+		// request normal mode
+		CANGCON &= ~(1 << LISTEN);
+	}
+	else {
+		// LISTEN mode
+		CANGCON |= (1 << LISTEN);
+	}
 }
 
 // ----------------------------------------------------------------------------
 void
 modm::platform::Can::setAutomaticRetransmission(bool retransmission)
 {
-
+	// not available on AVRs
 }
+
 
 // ----------------------------------------------------------------------------
 bool
@@ -55,6 +199,65 @@ modm::platform::Can::isMessageAvailable()
 	// Check if there are any messages pending in the receive registers
 	return false; // TODO
 %% endif
+}
+
+bool
+modm::platform::Can::copyMobToMessage(can::Message& message)
+{
+	// read status
+	uint8_t cancdmob = CANCDMOB;
+
+	// read length
+	message.setLength(cancdmob & 0x0f);
+
+	if (cancdmob & (1 << IDE))
+	{
+		// extended identifier
+		uint32_t tmp;
+		uint8_t *ptr = (uint8_t *) &tmp;
+
+		*ptr       = CANIDT4;
+		*(ptr + 1) = CANIDT3;
+		*(ptr + 2) = CANIDT2;
+		*(ptr + 3) = CANIDT1;
+
+		message.setIdentifier(tmp >> 3);
+
+		/* equivalent to:
+		msg->id  = (uint8_t)  CANIDT4 >> 3;
+		msg->id |= (uint32_t) CANIDT3 << 5;
+		msg->id |= (uint32_t) CANIDT2 << 13;
+		msg->id |= (uint32_t) CANIDT1 << 21;
+		*/
+
+		message.setExtended(true);
+	}
+	else
+	{
+		// standard identifier
+		uint16_t id;
+
+		id  = (uint8_t)  CANIDT2 >> 5;
+		id |= (uint16_t) CANIDT1 << 3;
+
+		message.setIdentifier(id);
+		message.setExtended(false);
+	}
+
+	if (CANIDT4 & (1 << RTRTAG)) {
+		message.setRemoteTransmitRequest(true);
+	}
+	else {
+		message.setRemoteTransmitRequest(false);
+
+		// read data
+		uint8_t *p = message.data;
+		for (uint8_t i = 0; i < message.getLength(); i++) {
+			*p++ = CANMSG;
+		}
+	}
+
+	return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -72,9 +275,51 @@ modm::platform::Can::getMessage(can::Message& message)
 		rxQueue.pop();
 		return true;
 	}
+
 %% else
-	// TODO
-	return false;
+
+	bool found = false;
+	uint8_t mob;
+
+	// check if there is any waiting message
+	if (!at90can_check_message())
+		return 0;
+
+	// find the MOb with the received message
+	for (mob = 0; mob < 15; mob++)
+	{
+		CANPAGE = mob << 4;
+
+		if (CANSTMOB & (1<<RXOK))
+		{
+			found = true;
+
+			// clear flags
+			CANSTMOB &= 0;
+			break;
+		}
+	}
+
+	if (!found) {
+		return 0;		// should never happen
+	}
+
+	found = copyMobToMessage(message);
+
+	%% if options["buffer.rx"] == 0
+	// mark message as processed
+	ENTER_CRITICAL_SECTION;
+	_messages_waiting--;
+	LEAVE_CRITICAL_SECTION;
+	%% endif
+
+	// re-enable interrupts
+	enableMobInterrupt(mob);
+
+	// clear flags
+	CANCDMOB = (1 << CONMOB1) | (CANCDMOB & (1 << IDE));
+
+	return found;
 %% endif
 }
 
@@ -89,27 +334,219 @@ modm::platform::Can::isReadyToSend()
 %% endif
 }
 
+/**
+ * \brief	Copy data form a message in RAM to the actual registers
+ *
+ * \warning this function assumes CANPAGE to be set properly before the call
+ */
+void
+modm::platform::Can::copyMessageToMob(const can::Message& message)
+{
+	// write DLC (Data Length Code)
+	CANCDMOB = message.getLength();
+
+	if (message.isExtended()) {
+		// extended CAN ID
+		CANCDMOB |= (1 << IDE);
+
+		CANIDT4 = (uint8_t)  message.getIdentifier() << 3;
+
+		uint32_t temp = message.getIdentifier() << 3;
+		uint8_t *ptr = (uint8_t *) &temp;
+
+		CANIDT3 = *(ptr + 1);
+		CANIDT2 = *(ptr + 2);
+		CANIDT1 = *(ptr + 3);
+	}
+	else {
+		// standard CAN ID
+		CANIDT4 = 0;
+		CANIDT3 = 0;
+		CANIDT2 = (uint8_t)  message.getIdentifier() << 5;
+		CANIDT1 = (uint16_t) message.getIdentifier() >> 3;
+	}
+
+	if (message->isRemoteTransmitRequest()) {
+		CANIDT4 |= (1<<RTRTAG);
+	}
+	else {
+		const uint8_t *p = msg.data;
+		for (uint8_t i = 0; i < msg.getLength(); i++) {
+			CANMSG = *p++;
+		}
+	}
+}
+
 // ----------------------------------------------------------------------------
 bool
 modm::platform::Can::sendMessage(const can::Message& message)
 {
-	return true; // TODO
+	// check if there is any free MOb
+	uint8_t mob = findFreeMob();
+	if (mob >= 15)
+		return false;
+
+	// load corresponding MOb page ...
+	CANPAGE = (mob << 4);
+
+	// clear flags
+	CANSTMOB &= 0;
+
+	// ... and copy the data
+	copyMessageToMob(message);
+
+	// enable interrupt
+	enableMobInterrupt(mob);
+
+	%% if options["buffer.tx"] == 0
+		_free_buffer--;
+	%% endif
+
+	// enable transmission
+	CANCDMOB |= (1<<CONMOB0);
+
+	return true;
 }
 
 // ----------------------------------------------------------------------------
 modm::platform::Can::BusState
 modm::platform::Can::getBusState()
 {
-	if (true) {
-		return BusState::Off;
+	switch(CANGSTA & 0b11) {
+		case 0b11:
+		case 0b10:
+			return BusState::Off;
+		case  0b01:
+			return BusState::ErrorPassive;
+		case 0b00:
+			return BusState::Connected;
 	}
-	else if (false) {
-		return BusState::ErrorPassive;
+}
+
+/// get next free MOb
+uint8_t findFreeMob(void)
+{
+	%% if options["buffer.tx"] == 0
+	if (_free_buffer == 0)
+		return 0xff;
+	%% elif CAN_FORCE_TX_ORDER
+	if (_transmission_in_progress)
+		return 0xff;
+	%% endif
+
+	uint8_t i;
+	for (i = 0;i < 15;i++)
+	{
+		// load MOb page
+		CANPAGE = i << 4;
+
+		// check if MOb is in use
+		if ((CANCDMOB & ((1 << CONMOB1) | (1 << CONMOB0))) == 0)
+			return i;
 	}
-	else if (false) {
-		return BusState::ErrorWarning;
+
+	return 0xff;
+}
+
+
+// The CANPAGE register have to be restored after usage, otherwise
+// it could cause trouble in the application programm.
+MODM_ISR(CANIT)
+{
+	uint8_t canpage;
+	uint8_t mob;
+
+	if ((CANHPMOB & 0xF0) != 0xF0)
+	{
+		// save MOb page register
+		canpage = CANPAGE;
+
+		// select MOb page with the highest priority
+		CANPAGE = CANHPMOB & 0xF0;
+		mob = (CANHPMOB >> 4);
+
+		// a interrupt is only generated if a message was transmitted or received
+		if (CANSTMOB & (1 << TXOK))
+		{
+			// clear MOb
+			CANSTMOB &= 0;
+			CANCDMOB = 0;
+
+			%% if options["buffer.tx"] > 0
+			can_t *buf = can_buffer_get_dequeue_ptr(&can_tx_buffer);
+
+			// check if there are any another messages waiting
+			if (buf != NULL)
+			{
+				at90can_copy_message_to_mob( buf );
+				can_buffer_dequeue(&can_tx_buffer);
+
+				// enable transmission
+				CANCDMOB |= (1<<CONMOB0);
+			}
+			else {
+				// buffer underflow => no more messages to send
+				disableMobInterrupt(mob);
+				_transmission_in_progress = 0;
+			}
+			%% else
+			_free_buffer++;
+
+			// reset interrupt
+			if (mob < 8)
+				CANIE2 &= ~(1 << mob);
+			else
+				CANIE1 &= ~(1 << (mob - 8));
+			%% endif
+
+			CAN_INDICATE_TX_TRAFFIC_FUNCTION;
+		}
+		else {
+			// a message was received successfully
+			%% if options["buffer.rx"] > 0
+			can_t *buf = can_buffer_get_enqueue_ptr(&can_rx_buffer);
+
+			if (buf != NULL)
+			{
+				// read message
+				at90can_copy_mob_to_message( buf );
+
+				// push it to the list
+				can_buffer_enqueue(&can_rx_buffer);
+			}
+			else {
+				// buffer overflow => reject message
+				// FIXME inform the user
+			}
+
+			// clear flags
+			CANSTMOB &= 0;
+			CANCDMOB = (1 << CONMOB1) | (CANCDMOB & (1 << IDE));
+			%% else
+			_messages_waiting++;
+
+			// reset interrupt
+			if (mob < 8)
+				CANIE2 &= ~(1 << mob);
+			else
+				CANIE1 &= ~(1 << (mob - 8));
+			%% endif
+
+			CAN_INDICATE_RX_TRAFFIC_FUNCTION;
+		}
+
+		// restore MOb page register
+		CANPAGE = canpage;
 	}
-	else {
-		return BusState::Connected;
+	else
+	{
+		// no MOb matches with the interrupt => general interrupt
+		CANGIT |= 0;
 	}
+}
+
+// Overflow of CAN timer
+MODM_ISR(OVRIT)
+{
+	// empty
 }

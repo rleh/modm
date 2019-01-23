@@ -113,7 +113,11 @@ public:
 	initialize(	uint32_t interruptPriority, Mode startupMode = Mode::Normal,
 				bool overwriteOnOverrun = true)
 	{
-		using Timings = CanBitTiming<SystemClock::Can{{ id }}, bitrate>;
+		constexpr uint32_t bs1Max = 15;
+		constexpr uint32_t bs2Max = 7;
+		constexpr uint32_t sjwMax = 3;
+		constexpr uint32_t prescalerMax = (1 << 10) - 1;
+		using Timings = CanBitTiming<SystemClock::Can{{ id }}, bitrate, bs1Max, bs2Max, sjwMax, prescalerMax>;
 
 		Timings::template assertBitrateInTolerance<tolerance>();
 
