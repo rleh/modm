@@ -125,6 +125,11 @@ modm::platform::SpiBidiMaster{{ id }}::read()
 	// LSB != Bit1 ?
 	if ( !(state & Bit1) )
 	{
+		uint8_t dummy = 0;
+		while (SpiHal{{ id }}::isReceiveRegisterNotEmpty()) {
+			SpiHal{{ id }}::read(dummy);
+		}
+
 		// set read mode
 		SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
 
@@ -255,7 +260,7 @@ modm::platform::SpiBidiMaster{{ id }}::write(const uint8_t* tx, std::size_t leng
 				return {modm::rf::Running};
 
 			SpiHal{{ id }}::setSpiTransactionEnabled(false);
-			SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
+			//SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
 
 			// clear the state
 			state &= ~Bit2;
@@ -275,11 +280,16 @@ modm::platform::SpiBidiMaster{{ id }}::read(uint8_t* rx, std::size_t length)
 	// we need to globally remember which byte we are currently transferring
 	static std::size_t index = 0;
 
+	uint8_t dummy = 0;
+
 	// we are only interested in Bit3
 	switch(state & Bit3)
 	{
 		case 0:
 			// we will only visit this state once
+			while (SpiHal{{ id }}::isReceiveRegisterNotEmpty()) {
+				SpiHal{{ id }}::read(dummy);
+			}
 
 			// set read mode
 			SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
