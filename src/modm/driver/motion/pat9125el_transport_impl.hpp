@@ -13,6 +13,9 @@
 #	error  "Don't include this file directly, use 'pat9125el_transport.hpp' instead!"
 #endif
 
+#undef RF_CALL
+#define RF_CALL RF_CALL_BLOCKING
+
 namespace modm
 {
 

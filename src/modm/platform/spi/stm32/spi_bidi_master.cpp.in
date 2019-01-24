@@ -15,6 +15,7 @@
  */
 // ----------------------------------------------------------------------------
 
+#include <modm/board.hpp>
 #include "spi_bidi_master_{{id}}.hpp"
 
 // Bit0: single write transfer state
@@ -86,6 +87,7 @@ modm::platform::SpiBidiMaster{{ id }}::write(uint8_t data)
 
 		// set write mode
 		SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Output);
+		modm::platform::GpioD15::set();
 
 		// start SPI transaction
 		SpiHal{{ id }}::setSpiTransactionEnabled(true);
@@ -132,6 +134,7 @@ modm::platform::SpiBidiMaster{{ id }}::read()
 
 		// set read mode
 		SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
+		modm::platform::GpioD15::reset();
 
 		// start transfer
 		SpiHal{{ id }}::setSpiTransactionEnabled(true);
@@ -235,6 +238,7 @@ modm::platform::SpiBidiMaster{{ id }}::write(const uint8_t* tx, std::size_t leng
 
 			// set write mode
 			SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Output);
+			modm::platform::GpioD15::set();
 
 			// start SPI transaction
 			SpiHal{{ id }}::setSpiTransactionEnabled(true);
@@ -260,7 +264,6 @@ modm::platform::SpiBidiMaster{{ id }}::write(const uint8_t* tx, std::size_t leng
 				return {modm::rf::Running};
 
 			SpiHal{{ id }}::setSpiTransactionEnabled(false);
-			//SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
 
 			// clear the state
 			state &= ~Bit2;
@@ -293,6 +296,7 @@ modm::platform::SpiBidiMaster{{ id }}::read(uint8_t* rx, std::size_t length)
 
 			// set read mode
 			SpiHal{{ id }}::setDataDirection(SpiHal{{ id }}::DataDirection::Input);
+			modm::platform::GpioD15::reset();
 
 			// start transfer
 			SpiHal{{ id }}::setSpiTransactionEnabled(true);

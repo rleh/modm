@@ -102,6 +102,9 @@ main()
 	Board::initialize();
 	Board::Leds::setOutput();
 
+	GpioD15::setOutput();
+	Sck::setInput(Gpio::InputType::PullUp);
+
 	Usart2::connect<GpioOutputA2::Tx>();
 	Usart2::initialize<Board::systemClock, modm::Uart::B115200>(10);
 
@@ -114,7 +117,7 @@ main()
 	Int::setInput();
 
 	Spi::connect<Sck::Sck, Mosi::Mosi>();
-	Spi::initialize<Board::systemClock, 1'400'000, modm::Tolerance::TwentyPercent>();
+	Spi::initialize<Board::systemClock, 1'312'500, modm::Tolerance::TwentyPercent>();
 
 	while (1)
 	{
