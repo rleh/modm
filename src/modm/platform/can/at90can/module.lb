@@ -70,8 +70,6 @@ def build(env):
     properties["target"] = device.identifier
     properties["driver"] = driver
 
-    properties.update(get_substitutions(0, device, env))
-
     env.substitutions = properties
     env.outbasepath = "modm/src/modm/platform/can"
 
