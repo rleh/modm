@@ -29,6 +29,8 @@
 #include <{{ header }}>
 %% endfor
 
+#define HRTIM_TIM_TypeDef HRTIM_TypeDef
+
 /// @cond
 // This is a hack to make the *_Typedef's known to GDB, so that you can debug
 // the peripherals directly in GDB in any context.
