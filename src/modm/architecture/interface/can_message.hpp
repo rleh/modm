@@ -25,6 +25,7 @@ namespace can
 
 /// Representation of a CAN message
 /// @ingroup modm_architecture_can
+template < bool fdcanLongFrame = false >
 struct Message
 {
 	Message(const uint32_t& inIdentifier = 0, uint8_t inLength = 0) :
@@ -82,7 +83,7 @@ struct Message
 
 public:
 	uint32_t identifier;
-	uint8_t modm_aligned(4) data[8];
+	uint8_t modm_aligned(4) data[(fdcanLongFrame == false) ? 8 : 64];
 	struct Flags
 	{
 		Flags() :
