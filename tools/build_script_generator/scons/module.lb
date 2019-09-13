@@ -111,6 +111,8 @@ def build(env):
                       "black_magic_probe", "utils_buildsize", "postmortem_gdb"})
     elif device["core"].startswith("avr"):
         tools.update({"compiler_avr_gcc", "utils_buildsize", "program_avrdude"})
+    elif device["core"].startswith("e31"):
+        tools.update({"compiler_riscv64_unknown_elf_gcc","program_openocd","utils_buildsize"})
     else: # hosted
         tools.update({"compiler_hosted_gcc"})
 

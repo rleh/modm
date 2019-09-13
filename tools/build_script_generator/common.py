@@ -333,6 +333,23 @@ def common_compiler_flags(compiler, target):
             "-L{linkdir}",
             "-Tlinkerscript.ld",
         ]
+    elif core.startswith("e31"):
+        flags["archflags"] += [
+            "-march=rv32imac",
+            "-mabi=ilp32",
+        ]
+        flags["cxxflags"] += [
+            "-fno-exceptions",
+            "-fno-unwind-tables",
+            "-fno-rtti",
+            "-fno-threadsafe-statics",
+        ]
+        flags["linkflags"] += [
+            "-L{linkdir}",
+            "-Tlinkerscript.ld",
+            "--specs=nano.specs",
+            "--specs=nosys.specs",
+        ]
 
     return flags
 
