@@ -349,6 +349,7 @@ def common_compiler_flags(compiler, target):
             "-Tlinkerscript.ld",
             "--specs=nano.specs",
             "--specs=nosys.specs",
+            "-nostartfiles"
         ]
 
     return flags

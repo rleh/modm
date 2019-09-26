@@ -120,7 +120,7 @@ modm_abandon(const char * module,
 
 #else
 
-#if defined MODM_CPU_ARM || defined MODM_CPU_AVR
+#if defined MODM_CPU_ARM || defined MODM_CPU_AVR || defined MODM_CPU_RISCV
 #	define MODM_ASSERTION_LINKER_SECTION ".assertion"
 #elif defined MODM_OS_OSX
 #	define MODM_ASSERTION_LINKER_SECTION "__DATA,modm_assertion"
