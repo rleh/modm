@@ -34,3 +34,6 @@
 [submodule "ext/chan/fatfs"]
 	path = ext/chan/fatfs
 	url = https://github.com/modm-ext/fatfs-partial.git
+[submodule "ext/nonstd/span-lite"]
+	path = ext/nonstd/span-lite
+	url = https://github.com/modm-ext/span-lite.git
