@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2020, Raphael Lehmann
+#
+# This file is part of the modm project.
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# -----------------------------------------------------------------------------
+
+def init(module):
+    module.name = ":span-lite"
+    module.description = """
+# span lite
+
+A single-file header-only version of a C++20-like span for C++98, C++11 and later
+
+https://github.com/martinmoene/span-lite
+"""
+
+def prepare(module, options):
+    return True
+
+def build(env):
+
+    env.collect(":build:path.include", "modm/ext/nonstd/include")
+    env.outbasepath = "modm/ext/nonstd/include/nonstd"
+
+    env.copy("span-lite/include/nonstd/span.hpp", "span.hpp")
