@@ -1,0 +1,11 @@
+<library>
+  <extends>modm:nucleo-g431rb</extends>
+  <options>
+    <option name="modm:build:build.path">../../../build/nucleo_g431rb/graphics</option>
+  </options>
+  <modules>
+    <module>modm:build:scons</module>
+    <module>modm:driver:ili9341</module>
+    <module>modm:platform:spi:1</module>
+  </modules>
+</library>
