@@ -4,6 +4,7 @@
 # Copyright (c) 2016-2018, Niklas Hauser
 # Copyright (c) 2017, Fabian Greif
 # Copyright (c) 2018, Carl Treudler
+# Copyright (c) 2020, Raphael Lehmann
 #
 # This file is part of the modm project.
 #
@@ -62,3 +63,5 @@ def build(env):
 
     env.template("adc.hpp.in")
     env.template("adc_impl.hpp.in")
+    env.template("adc_interrupt.hpp.in", "adc_interrupt.hpp")
+    env.template("adc_interrupt.cpp.in", "adc_interrupt.cpp")
