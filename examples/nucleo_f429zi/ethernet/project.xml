@@ -1,0 +1,12 @@
+<library>
+  <extends>modm:nucleo-f429zi</extends>
+  <options>
+    <option name="modm:build:build.path">../../../build/nucleo_f429zi/ethernet</option>
+    <option name="modm:platform:cortex-m:linkerscript.override">linkerscript.ld</option>
+  </options>
+  <modules>
+    <module>modm:build:scons</module>
+    <module>modm:freertos:tcp:lan8720a</module>
+    <module>modm:processing:rtos</module>
+  </modules>
+</library>
