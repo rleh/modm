@@ -78,7 +78,11 @@ public:
 				or
 %% endif
 				(ID == {{ controller["instance"] }} and
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 						ChannelID >= DmaBase::Channel::Channel1 and
+%% elif dmaType in ["stm32-stream-channel"]
+						ChannelID >= DmaBase::Channel::Channel0 and
+%% endif
 						ChannelID <= DmaBase::Channel::Channel{{ controller["channels"] }})
 %% endfor
 				, "invalid Channel ID for that DMA controller"
@@ -125,7 +129,11 @@ public:
 		static void
 		start()
 		{
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 			ControlHal::clearInterruptFlags(uint32_t(Interrupt::Global) << (uint32_t(ChannelID) * 4));
+%% elif dmaType in ["stm32-stream-channel"]
+			ControlHal::clearInterruptFlags(Interrupt::All, ChannelID);
+%% endif
 			ChannelHal::start();
 		}
 		/**
@@ -242,6 +250,9 @@ public:
 			DMA_Request_TypeDef *DMA_REQ = reinterpret_cast<DMA_Request_TypeDef *>(ControlHal::DMA_CSEL);
 			DMA_REQ->CSELR &= ~(0x0f << (uint32_t(ChannelID) * 4));
 			DMA_REQ->CSELR |= uint32_t(dmaRequest) << (uint32_t(ChannelID) * 4);
+%% elif dmaType in ["stm32-stream-channel"]
+			DMA_Channel_TypeDef *Channel = reinterpret_cast<DMA_Channel_TypeDef*>(CHANNEL_BASE);
+			Channel->CR = (Channel->CR & ~DMA_SxCR_CHSEL_Msk) | (uint32_t(dmaRequest) << DMA_SxCR_CHSEL_Pos);
 %% else
 			// Nothing to see here. This controller has no request mux, instead
 			// all requests are or-ed together.
@@ -257,13 +268,23 @@ public:
 		static void
 		interruptHandler()
 		{
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 			static const uint32_t TC_Flag {
 				uint32_t(Interrupt::TransferComplete) << (uint32_t(ChannelID) * 4)
 			};
 			static const uint32_t TE_Flag {
 				uint32_t(Interrupt::Error) << (uint32_t(ChannelID) * 4)
 			};
+%% elif dmaType in ["stm32-stream-channel"]
+			constexpr uint8_t offsetLut[8] = {0, 6, 16, 22, 0+32, 6+32, 16+32, 22+32};
 
+			static const uint64_t TC_Flag {
+				uint64_t(Interrupt::TransferComplete) << offsetLut[uint32_t(ChannelID)]
+			};
+			static const uint64_t TE_Flag {
+				uint64_t(Interrupt::Error) << offsetLut[uint32_t(ChannelID)]
+			};
+%% endif
 			auto isr { ControlHal::getInterruptFlags() };
 			if (isr & TE_Flag) {
 				disable();
@@ -273,7 +294,11 @@ public:
 			if ((isr & TC_Flag) and transferComplete)
 				transferComplete();
 
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 			ControlHal::clearInterruptFlags(uint32_t(Interrupt::Global) << (uint32_t(ChannelID) * 4));
+%% elif dmaType in ["stm32-stream-channel"]
+			ControlHal::clearInterruptFlags(Interrupt::All, ChannelID);
+%% endif
 		}
 
 		/**
@@ -331,6 +356,7 @@ public:
  * Derive DMA controller classes for convenience. Every derived class defines
  * the channels available on that controller.
  */
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 %% for channels in dma["channels"]
 class Dma{{ channels.instance }}: public DmaController<{{ channels.instance }}>
 {
@@ -340,6 +366,17 @@ public:
 	%% endfor
 };
 %% endfor
+%% elif dmaType in ["stm32-stream-channel"]
+%% for streams in dma["streams"]
+class Dma{{ streams.instance }}: public DmaController<{{ streams.instance }}>
+{
+public:
+	%% for stream in streams.stream
+	using Channel{{ stream.position }} = DmaController<{{ streams.instance }}>::Channel<DmaBase::Channel::Channel{{ stream.position }}>;
+	%% endfor
+};
+%% endfor
+%%endif
 
 
 /*
@@ -387,7 +424,7 @@ struct DmaController<{{ channels.instance }}>::Channel<DmaBase::Channel::Channel
 	%% endfor
 %% endfor
 
-%%else
+%%elif dmaType in ["stm32-channel"]
 %% for channels in dma["channels"]
 	%% for channel in channels.channel
 		%% for signal in channel.signal
@@ -408,6 +445,29 @@ struct DmaController<{{ channels.instance }}>::Channel<DmaBase::Channel::Channel
 	static constexpr DmaBase::Request Request = DmaBase::Request::Any;
 };
 
+		%% endfor
+	%% endfor
+%% endfor
+
+%% elif dmaType in ["stm32-stream-channel"]
+%% for channels in dma["streams"]
+	%% for channel in channels.stream
+		%% for request in channel.channel
+			%% for signal in request.signal
+				%% set peripheral = signal.driver.capitalize()
+				%% if signal.instance is defined and peripheral not in ["Dac"]
+					%% set peripheral = peripheral ~ signal.instance
+				%% endif
+template <>
+template <>
+template <>
+struct DmaController<{{ channels.instance }}>::Channel<DmaBase::Channel::Channel{{ channel.position }}>::RequestMapping<Peripheral::{{ peripheral }}{% if signal.name is defined %}, DmaBase::Signal::{{ signal.name.capitalize() }}{% endif %}>
+{
+	using Channel = DmaController<{{ channels.instance }}>::Channel<DmaBase::Channel::Channel{{ channel.position }}>;
+	static constexpr DmaBase::Request Request = DmaBase::Request::Request{{ request.position }};
+};
+
+			%% endfor
 		%% endfor
 	%% endfor
 %% endfor

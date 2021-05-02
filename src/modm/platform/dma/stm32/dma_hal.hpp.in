@@ -23,6 +23,17 @@ namespace modm
 namespace platform
 {
 
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
+%% set cr = "CCR"
+// dmaType in ["stm32-channel-request", "stm32-channel"]
+%% elif dmaType in ["stm32-stream-channel"]
+%% set cr = "CR"
+// dmaType in ["stm32-stream-channel"]
+%% endif
+
+%% if dmaType in ["stm32-stream-channel"]
+using DMA_Channel_TypeDef = DMA_Stream_TypeDef;
+%% endif
 
 /**
  * Hardware abstraction of DMA controller
@@ -59,13 +70,24 @@ class DmaHal : public DmaBase
 	 */
 	template <uint32_t id>
 	static constexpr uint32_t getChannelBaseAddress() {
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 		if (id == 1)
 			return DMA1_Channel1_BASE;
 %% if (dma.instance | length) > 1
 		else
 			return DMA2_Channel1_BASE;
 %% endif
+%% elif dmaType in ["stm32-stream-channel"]
+		if (id == 1)
+			return DMA1_Stream1_BASE;
+%% if (dma.instance | length) > 1
+		else
+			return DMA2_Stream1_BASE;
+%% endif
+%% endif
 	}
+
+%% if dmaType in ["stm32-channel-request"]
 	/**
 	 * Get the address of the channel selection register
 	 *
@@ -73,43 +95,70 @@ class DmaHal : public DmaBase
 	 */
 	template <uint32_t id>
 	static constexpr uint32_t getCselAddress() {
-%% if dmaType in ["stm32-channel-request"]
 		if (id == 1)
 			return DMA1_CSELR_BASE;
 %% if (dma.instance | length) > 1
 		else
 			return DMA2_CSELR_BASE;
-%%endif
-%% else
-		// Nothing to see here. This controller has no request mux, instead
-		// all requests are OR-ed together.
-		return 0;
 %% endif
 	}
+%% endif
 
 public:
 	/// DMA base register address
 	static constexpr uint32_t DMA_BASE { getBaseAddress<ID>() };
+%% if dmaType in ["stm32-channel-request"]
 	/// DMA channel selection register address
 	static constexpr uint32_t DMA_CSEL { getCselAddress<ID>() };
+%% endif
 	/// DMA channel base register address
 	static constexpr uint32_t CHANNEL_BASE { getChannelBaseAddress<ID>() };
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 	/// Register offset from channel to channel
 	static constexpr uint32_t CHANNEL_2_CHANNEL { 0x14 };
+%% elif dmaType in ["stm32-stream-channel"]
+	/// Register offset from channel to channel
+	static constexpr uint32_t CHANNEL_2_CHANNEL { 0x18 };
+%% endif
 
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 	static void
 	clearInterruptFlags(uint32_t flags)
 	{
 		DMA_TypeDef *DMA = reinterpret_cast<DMA_TypeDef *>(DMA_BASE);
-		DMA->IFCR |= flags;
+		DMA->IFCR = flags;
 	}
+%% elif dmaType in ["stm32-stream-channel"]
+	static void
+	clearInterruptFlags(Interrupt flags, DmaBase::Channel ChannelID)
+	{
+		DMA_TypeDef *DMA = reinterpret_cast<DMA_TypeDef *>(DMA_BASE);
+		uint8_t ch = uint8_t(ChannelID);
+		constexpr uint8_t offsetLut[4] = {0, 6, 16, 22};
+		if(ch < 4) {
+			DMA->LIFCR = uint32_t(flags) << offsetLut[ch];
+		}
+		else if(ch < 8) {
+			DMA->HIFCR = uint32_t(flags) << offsetLut[ch-4];
+		}
+	}
+%% endif
 
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 	static uint32_t
 	getInterruptFlags()
 	{
 		DMA_TypeDef *DMA = reinterpret_cast<DMA_TypeDef *>(DMA_BASE);
 		return DMA->ISR;
 	}
+%% elif dmaType in ["stm32-stream-channel"]
+	static uint64_t
+	getInterruptFlags()
+	{
+		DMA_TypeDef *DMA = reinterpret_cast<DMA_TypeDef *>(DMA_BASE);
+		return DMA->LISR | (static_cast<uint64_t>(DMA->HISR) << 32);
+	}
+%% endif
 };
 
 /**
@@ -151,7 +200,7 @@ public:
 		stop();
 
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
-		Base->CCR = uint32_t(direction) | uint32_t(memoryDataSize) |
+		Base->{{ cr }} = uint32_t(direction) | uint32_t(memoryDataSize) |
 				uint32_t(peripheralDataSize) | uint32_t(memoryIncrement) |
 				uint32_t(peripheralIncrement) | uint32_t(priority) |
 				uint32_t(circularMode);
@@ -185,8 +234,13 @@ public:
 	setMemoryAddress(uintptr_t address)
 	{
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 		Base->CMAR = address;
+%% elif dmaType in ["stm32-stream-channel"]
+		Base->M0AR = address;
+%% endif
 	}
+
 	/**
 	 * Set the peripheral address of the DMA channel
 	 *
@@ -198,7 +252,11 @@ public:
 	setPeripheralAddress(uintptr_t address)
 	{
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 		Base->CPAR = address;
+%% elif dmaType in ["stm32-stream-channel"]
+		Base->PAR = address;
+%% endif
 	}
 
 	/**
@@ -215,9 +273,9 @@ public:
 	{
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
 		if (increment)
-			Base->CCR |= uint32_t(MemoryIncrementMode::Increment);
+			Base->{{ cr }} |= uint32_t(MemoryIncrementMode::Increment);
 		else
-			Base->CCR &= ~uint32_t(MemoryIncrementMode::Increment);
+			Base->{{ cr }} &= ~uint32_t(MemoryIncrementMode::Increment);
 	}
 
 	/**
@@ -234,9 +292,9 @@ public:
 	{
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
 		if (increment)
-			Base->CCR |= uint32_t(PeripheralIncrementMode::Increment);
+			Base->{{ cr }} |= uint32_t(PeripheralIncrementMode::Increment);
 		else
-			Base->CCR &= ~uint32_t(PeripheralIncrementMode::Increment);
+			Base->{{ cr }} &= ~uint32_t(PeripheralIncrementMode::Increment);
 	}
 
 	/**
@@ -246,7 +304,11 @@ public:
 	setDataLength(std::size_t length)
 	{
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
+%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 		Base->CNDTR = length;
+%% elif dmaType in ["stm32-stream-channel"]
+		Base->NDTR = length;
+%% endif
 	}
 
 	/**
@@ -256,7 +318,7 @@ public:
 	enableInterrupt(Interrupt_t irq)
 	{
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
-		Base->CCR |= irq.value;
+		Base->{{ cr }} |= irq.value;
 	}
 	/**
 	 * Disable IRQ of this DMA channel (e.g. transfer complete or error)
@@ -265,7 +327,7 @@ public:
 	disableInterrupt(Interrupt_t irq)
 	{
 		DMA_Channel_TypeDef *Base = (DMA_Channel_TypeDef *) CHANNEL_BASE;
-		Base->CCR &= ~(irq.value);
+		Base->{{ cr }} &= ~(irq.value);
 	}
 };
 

@@ -46,20 +46,34 @@ class DmaBase
 {
 public:
 	// Enums
-%% if target["family"] == "f4"
+%% if dmaType in ["stm32-stream-channel"]
 	enum class
-	Channel : uint32_t
+	Channel
 	{
 		Channel0 = 0,
-		Channel1 = DMA_SxCR_CHSEL_0,
-		Channel2 = DMA_SxCR_CHSEL_1,
-		Channel3 = DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
-		Channel4 = DMA_SxCR_CHSEL_2,
-		Channel5 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_0,
-		Channel6 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1,
-		Channel7 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
+		Channel1,
+		Channel2,
+		Channel3,
+		Channel4,
+		Channel5,
+		Channel6,
+		Channel7,
 	};
 
+	enum class
+	Request : uint32_t
+	{
+		Request0 = 0,
+		Request1 = DMA_SxCR_CHSEL_0,
+		Request2 = DMA_SxCR_CHSEL_1,
+		Request3 = DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
+		Request4 = DMA_SxCR_CHSEL_2,
+		Request5 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_0,
+		Request6 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1,
+		Request7 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
+	};
+
+	/*
 	enum class
 	MemoryBurstTransfer : uint32_t
 	{
@@ -84,6 +98,7 @@ public:
 		Dma 		= 0,
 		Peripheral 	= DMA_SxCR_PFCTRL, ///< the peripheral is the flow controller
 	};
+	*/
 %% elif dmaType in ["stm32-channel-request", "stm32-channel"]
 	%% set channel_count = namespace(max_channels = 0)
 	%% for controller in dmaController
@@ -185,7 +200,7 @@ public:
 	enum class
 	DataTransferDirection : uint32_t
 	{
-%% if target["family"] == "f4"
+%% if dmaType in ["stm32-stream-channel"]
 		/// Source: DMA_SxPAR; Sink: DMA_SxM0AR
 		PeripheralToMemory 	= 0,
 		/// Source: DMA_SxM0AR; Sink: DMA_SxPAR
@@ -214,7 +229,7 @@ public:
 	};
 
 protected:
-%% if target["family"] == "f4"
+%% if dmaType in ["stm32-stream-channel"]
 	static constexpr uint32_t memoryMask =
 			DMA_SxCR_MBURST_1 | DMA_SxCR_MBURST_0 |	// MemoryBurstTransfer
 			DMA_SxCR_MSIZE_0  | DMA_SxCR_MSIZE_1  |	// MemoryDataSize
@@ -244,6 +259,16 @@ protected:
 			DMA_CCR_PL_1     | DMA_CCR_PL_0;		// Priority
 %% endif
 
+%% if dmaType in ["stm32-stream-channel"]
+	enum class Interrupt {
+		FifoError = 0b00'0001,
+		DirectModeError = 0b00'0100,
+		Error = 0b00'1000,
+		HalfTransferComplete = 0b01'0000,
+		TransferComplete = 0b10'0000,
+		All = 0b11'1101,
+	};
+%% elif dmaType in ["stm32-channel-request", "stm32-channel"]
 	enum class Interrupt {
 		Global = 0x01,
 		TransferComplete = 0x02,
@@ -251,6 +276,7 @@ protected:
 		Error = 0x08,
 		All = 0x0f,
 	};
+%% endif
 	MODM_FLAGS32(Interrupt);
 
 	using IrqHandler = void (*)(void);
@@ -266,7 +292,11 @@ struct DmaBase::Nvic<{{ instance }}>
 	static constexpr IRQn_Type DmaIrqs[] {
 	%% for channels in irqs
 	%% for i in range(channels | length)
+	%% if dmaType in ["stm32-channel-request", "stm32-channel"]
 			DMA{{ instance }}_Channel{{ channels | join("_") }}_IRQn,
+	%% elif dmaType in ["stm32-stream-channel"]
+			DMA{{ instance }}_Stream{{ channels | join("_") }}_IRQn,
+	%% endif
 	%% endfor
 	%% endfor
 	};

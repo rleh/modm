@@ -27,6 +27,7 @@ def prepare(module, options):
             [
             "stm32-channel-request",
             "stm32-channel",
+            "stm32-stream-channel",
     ]:
         return False
 
@@ -54,6 +55,9 @@ def prepare(module, options):
             return False
         return True
 
+    if did["family"] in ["f4", "f7"]:
+        return True
+
     if did["family"] in ["l0", "l4"]:
         return True
 
@@ -71,47 +75,98 @@ def build(env):
     properties = device.properties
     properties["target"] = device.identifier
     dma = device.get_driver("dma")
+
+    dmaType = dma["type"]
+    properties["dmaType"] = dmaType
+
+    if dmaType in ["stm32-stream-channel"]:
+        dma["channels"] = dma["streams"]
+
     properties["dma"] = dma
+
+
+    from pprint import pprint
+    #pprint(dma)
+    #exit(1)
 
     # Get the peripheral supported by DMA from device info and create a list of signals
     # (also determines the maximum number of channels per controller)
     signal_names = {}
     controller = []
-    for channels in dma["channels"]:
-        max_channels = 0
-        for channel in channels["channel"]:
-            max_channels = channel["position"]
-            if dma["type"] in ["stm32-channel-request"]:
-                for request in channel["request"]:
+    if dmaType in ["stm32-channel-request", "stm32-channel"]:
+        for channels in dma["channels"]:
+            max_channels = 0
+            for channel in channels["channel"]:
+                max_channels = channel["position"]
+                if dma["type"] in ["stm32-channel-request"]:
+                    for request in channel["request"]:
+                        for signal in request["signal"]:
+                            if "name" in signal:
+                                signal_name = signal["name"].capitalize()
+                                signal_names[signal_name] = 1
+                else:
+                    for signal in channel["signal"]:
+                        if "name" in signal:
+                            signal_name = signal["name"].capitalize()
+                            signal_names[signal_name] = 1
+            controller.append({"instance": int(channels["instance"]), "channels": int(max_channels)})
+    elif dmaType in ["stm32-stream-channel"]:
+        #pprint(dma["streams"])
+        #exit(1)
+        for channels in dma["streams"]:
+            max_channels = 0
+            for channel in channels["stream"]:
+                max_channels = channel["position"]
+                for request in channel["channel"]:
                     for signal in request["signal"]:
                         if "name" in signal:
                             signal_name = signal["name"].capitalize()
                             signal_names[signal_name] = 1
-            else:
-                for signal in channel["signal"]:
-                    if "name" in signal:
-                        signal_name = signal["name"].capitalize()
-                        signal_names[signal_name] = 1
-        controller.append({"instance": int(channels["instance"]), "channels": int(max_channels)})
+            controller.append({"instance": int(channels["instance"]), "channels": int(max_channels)})
+    else:
+        raise NotImplementedError
 
     did = device.identifier
     if (did.family in ['f0'] and did.name == '30' and did.size == 'c') or (did.family in ['f1'] and did.name == '02'):
         # FIXME: Bug in modm-deviced data: Dma2 does not exist on device.identifier
         properties["dma"]["instance"].remove('2')
 
+    # With 'stm32-stream-channel' architecture some {peripherals, ~stream~ channel}
+    # can be used on multiple ~channels~ requests. This is not supported with the
+    # current API. The requests are de-duplicated:
+    if dmaType in ["stm32-stream-channel"]:
+        for channels in dma["streams"]:
+            channel_peripheral_list = list()
+            for channel in channels["stream"]:
+                for request in channel["channel"]:
+                    for signal in request["signal"]:
+                        peripheral = signal["driver"]
+                        if "instance" in signal and peripheral not in ["Dac"]:
+                            peripheral = peripheral + str(signal["instance"])
+                        name = signal["name"] if "name" in signal else ""
+                        channel_peripheral = "DMA{}, Channel{}, {}, {}".format(channels["instance"], channel["position"], peripheral, name)
+                        if channel_peripheral in channel_peripheral_list:
+                            for request in channel["channel"]:
+                                if signal in request["signal"]:
+                                    #print("Removing '{}' because there already exists another request...".format(channel_peripheral))
+                                    request["signal"].remove(signal)
+                                    break
+                        else:
+                            channel_peripheral_list.append(channel_peripheral)
+
     signal_names = sorted(list(set(signal_names)))
-    properties["dmaType"] = dma["type"]
     properties["dmaSignals"] = signal_names
     properties["dmaController"] = controller
 
     properties["irqList"] = dict()
-    for channels in dma["channels"]:
+    for channels in dma["channels"] if dmaType in ["stm32-channel-request", "stm32-channel"] else dma["streams"]:
         irqs = [v["name"] for v in device.get_driver("core")["vector"]]
         irqs = [v for v in irqs if v.startswith("DMA" + channels["instance"]) and not "DMA2D" in v]
         irq_list = list()
         for irq in irqs:
             irq_channel_list = []
-            for c in irq.split("Channel",1)[1]:
+            keyword = "Channel" if dmaType in ["stm32-channel-request", "stm32-channel"] else "Stream"
+            for c in irq.split(keyword, 1)[1]:
                 if c.isdigit():
                     irq_channel_list.append(int(c))
             irq_list.append(irq_channel_list)
