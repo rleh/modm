@@ -24,7 +24,7 @@
 #include <modm/architecture/interface/interrupt.hpp>
 #include <modm/architecture/interface/register.hpp>
 
-%% if target["family"] == "f4"
+%% if dmaType in ["stm32-stream-channel"]
 	%% set reg_prefix = "DMA_SxCR"
 %% elif dmaType in ["stm32-channel-request", "stm32-channel"]
 	%% set reg_prefix = "DMA_CCR"
