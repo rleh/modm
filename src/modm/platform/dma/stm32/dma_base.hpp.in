@@ -63,14 +63,14 @@ public:
 	enum class
 	Request : uint32_t
 	{
-		Request0 = 0,
-		Request1 = DMA_SxCR_CHSEL_0,
-		Request2 = DMA_SxCR_CHSEL_1,
-		Request3 = DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
-		Request4 = DMA_SxCR_CHSEL_2,
-		Request5 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_0,
-		Request6 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1,
-		Request7 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
+		Channel0 = 0,
+		Channel1 = DMA_SxCR_CHSEL_0,
+		Channel2 = DMA_SxCR_CHSEL_1,
+		Channel3 = DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
+		Channel4 = DMA_SxCR_CHSEL_2,
+		Channel5 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_0,
+		Channel6 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1,
+		Channel7 = DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_CHSEL_0,
 	};
 
 	/*

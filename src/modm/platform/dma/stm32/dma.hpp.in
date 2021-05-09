@@ -252,7 +252,7 @@ public:
 			DMA_REQ->CSELR |= uint32_t(dmaRequest) << (uint32_t(ChannelID) * 4);
 %% elif dmaType in ["stm32-stream-channel"]
 			DMA_Channel_TypeDef *Channel = reinterpret_cast<DMA_Channel_TypeDef*>(CHANNEL_BASE);
-			Channel->CR = (Channel->CR & ~DMA_SxCR_CHSEL_Msk) | (uint32_t(dmaRequest) << DMA_SxCR_CHSEL_Pos);
+			Channel->CR = (Channel->CR & ~DMA_SxCR_CHSEL_Msk) | uint32_t(dmaRequest);
 %% else
 			// Nothing to see here. This controller has no request mux, instead
 			// all requests are or-ed together.
@@ -464,7 +464,7 @@ template <>
 struct DmaController<{{ channels.instance }}>::Channel<DmaBase::Channel::Channel{{ channel.position }}>::RequestMapping<Peripheral::{{ peripheral }}{% if signal.name is defined %}, DmaBase::Signal::{{ signal.name.capitalize() }}{% endif %}>
 {
 	using Channel = DmaController<{{ channels.instance }}>::Channel<DmaBase::Channel::Channel{{ channel.position }}>;
-	static constexpr DmaBase::Request Request = DmaBase::Request::Request{{ request.position }};
+	static constexpr DmaBase::Request Request = DmaBase::Request::Channel{{ request.position }};
 };
 
 			%% endfor
