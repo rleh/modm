@@ -29,7 +29,7 @@ int main()
 	MODM_LOG_INFO << "Hello from SPI-DMA example on Nucleo-F429ZI!" << modm::endl;
 
 	// Enable DMA1 controller
-    Dma1::enable();
+    Dma2::enable();
     // Enable SPI1
     Spi::connect<Mosi::Mosi, Miso::Miso, Sck::Sck>();
     Spi::initialize<Board::SystemClock, 10_MHz>();
