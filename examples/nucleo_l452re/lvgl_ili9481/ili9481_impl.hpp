@@ -35,6 +35,8 @@ Ili9481<Interface, Reset, Backlight, BufferSize>::initialize()
 	{
 		BatchHandle h(*this);
 
+		this->writeCommand(Command::DisplayOff);
+
 		this->writeCommand(Command::LeaveSleep);
 		modm::delay_ms(20);
 		this->writeCommand(Command::PowerSetting, powerSetting, sizeof(powerSetting));

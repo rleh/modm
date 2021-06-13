@@ -92,8 +92,10 @@ main()
 {
 	Board::initialize();
 
-	Board::LedGreen::setOutput();
-	Board::LedGreen::set();
+	MODM_LOG_INFO << "modm LVGL example on Nucleo-L452RE board with ILI9481!\n\n";
+
+	//Board::LedGreen::setOutput();
+	//Board::LedGreen::set();
 
 	Dma1::enable();
 
@@ -101,7 +103,7 @@ main()
 		tft::Sck::Sck,
 		tft::Miso::Miso,
 		tft::Mosi::Mosi>();
-	tft::Spi::initialize<SystemClock, 40_MHz>();
+	tft::Spi::initialize<SystemClock, 20_MHz>();
 	tftController.initialize();
 	tftController.enableBacklight(true);
 
@@ -121,7 +123,6 @@ main()
 	};
 	touchController.setCalibration(cal);
 
-	MODM_LOG_INFO << "modm LVGL example on Nucleo-L452RE board!\n\n";
 
 	lv_init();
 

@@ -6,7 +6,10 @@
   <modules>
     <module>modm:build:scons</module>
     <module>modm:processing:timer</module>
-    <module>modm:driver:ili9341</module>
+    <!-- <module>modm:driver:ili9341</module> -->
+    <module>modm:architecture:delay</module>
+    <module>modm:architecture:spi.device</module>
+    <module>modm:ui:display</module>
     <module>modm:driver:touch2046</module>
     <module>modm:platform:spi:1</module>
     <module>modm:platform:spi:2</module>
