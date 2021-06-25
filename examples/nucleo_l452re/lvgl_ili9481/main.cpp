@@ -83,7 +83,7 @@ void my_flush_cb(lv_disp_drv_t * disp_drv, const lv_area_t * area, lv_color_t * 
 		{area->x1, area->y1},
 		(area->x2 - area->x1 +1),
 		(area->y2 - area->y1 + 1),
-		(modm::color::Rgb565*)color_p);
+		(uint8_t*)color_p);
 	lv_disp_flush_ready(disp_drv);
 }
 
@@ -103,7 +103,7 @@ main()
 		tft::Sck::Sck,
 		tft::Miso::Miso,
 		tft::Mosi::Mosi>();
-	tft::Spi::initialize<SystemClock, 20_MHz>();
+	tft::Spi::initialize<SystemClock, 10_MHz>();
 	tftController.initialize();
 	tftController.enableBacklight(true);
 

@@ -19,14 +19,20 @@ template <class Interface, class Reset, class Backlight, std::size_t BufferSize>
 void
 Ili9481<Interface, Reset, Backlight, BufferSize>::initialize()
 {
-	constexpr uint8_t powerSetting[] { 0x07, 0x42, 0x18 };
-	constexpr uint8_t vcomControl[] { 0x00, 0x07, 0x10 };
-	constexpr uint8_t powerSettingNormalMode[] { 0x01, 0x02 };
-	constexpr uint8_t panelDrivingSetting[] { 0x10, 0x3b, 0x00, 0x02, 0x11 };
-	constexpr uint8_t frameRateAndInversionControl[] { 0x03 };
-	constexpr uint8_t gammaSetting[] { 0x00, 0x32, 0x36, 0x45, 0x06, 0x16, 0x37, 0x75, 0x77, 0x54, 0x0c, 0x00 };
+	// See https://d1.amobbs.com/bbs_upload782111/files_50/ourdev_711030GFAB18.pdf
+	constexpr uint8_t powerSetting[] { 0x07, 0x41, 0x1D };
+	constexpr uint8_t vcomControl[] { 0x00, 0x1c, 0x1f };
+	constexpr uint8_t powerSettingNormalMode[] { 0x01, 0x11 };
+	constexpr uint8_t panelDrivingSetting[] { 0x10 /* 0x00? */, 0x3b, 0x00, 0x02, 0x11 };
+	constexpr uint8_t frameRateAndInversionControl[] { 0x03 }; // frame rate 72Hz (default)
+	constexpr uint8_t interfaceCtrl[] { 0x83 };
+	constexpr uint8_t gammaSetting[] { 0x00, 0x36, 0x21, 0x00, 0x00, 0x1f, 0x65, 0x23, 0x77, 0x00, 0x0f, 0x00 };
+	constexpr uint8_t unknowCommandB0[] = { 0x00 };
+	constexpr uint8_t unknowCommandE4[] = { 0xa0 };
+	constexpr uint8_t unknowCommandF0[] = { 0x01 };
+	constexpr uint8_t unknowCommandF3[] = { 0x40, 0xa4 };
 	constexpr uint8_t setAddressMode[] { 0x0a };
-	constexpr uint8_t setPixelFormat[] { 0x55 }; // 16bit/pixel
+	constexpr uint8_t setPixelFormat[] { 0x66 }; // 16bit/pixel
 	//constexpr uint8_t columnAddressSet[] { 0x00, 0x00, 0x01, 0x3f };
 	//constexpr uint8_t pageAddressSet[] { 0x00, 0x00, 0x01, 0xdf };
 
@@ -35,7 +41,8 @@ Ili9481<Interface, Reset, Backlight, BufferSize>::initialize()
 	{
 		BatchHandle h(*this);
 
-		this->writeCommand(Command::DisplayOff);
+		this->writeCommand(Command::SwReset);
+		//this->writeCommand(Command::DisplayOff);
 
 		this->writeCommand(Command::LeaveSleep);
 		modm::delay_ms(20);
@@ -44,7 +51,15 @@ Ili9481<Interface, Reset, Backlight, BufferSize>::initialize()
 		this->writeCommand(Command::PowerSettingNormalMode, powerSettingNormalMode, sizeof(powerSettingNormalMode));
 		this->writeCommand(Command::PanelDrivingSetting, panelDrivingSetting, sizeof(panelDrivingSetting));
 		this->writeCommand(Command::FrameRateAndInversionControl, frameRateAndInversionControl, sizeof(frameRateAndInversionControl));
+		//this->writeCommand(Command::InterfaceCtrl, interfaceCtrl, sizeof(interfaceCtrl));
 		this->writeCommand(Command::GammaSetting, gammaSetting, sizeof(gammaSetting));
+
+		// unknown commands from application note
+		this->writeCommand(Command::UnknowCommandB0, unknowCommandB0, sizeof(unknowCommandB0));
+		this->writeCommand(Command::UnknowCommandE4, unknowCommandE4, sizeof(unknowCommandE4));
+		this->writeCommand(Command::UnknowCommandF0, unknowCommandF0, sizeof(unknowCommandF0));
+		this->writeCommand(Command::UnknowCommandF3, unknowCommandF3, sizeof(unknowCommandF3)); // maybe?
+
 		this->writeCommand(Command::SetAddressMode, setAddressMode, sizeof(setAddressMode));
 		this->writeCommand(Command::SetPixelFormat, setPixelFormat, sizeof(setPixelFormat));
 		modm::delay_ms(120);
@@ -325,17 +340,12 @@ Ili9481<Interface, Reset, Backlight, BufferSize>::drawImageRaw(glcd::Point upper
 template <class Interface, class Reset, class Backlight, std::size_t BufferSize>
 void
 Ili9481<Interface, Reset, Backlight, BufferSize>::drawRaw(glcd::Point upperLeft,
-		uint16_t width, uint16_t height, color::Rgb565* data)
+		uint16_t width, uint16_t height, uint8_t* data)
 {
 	BatchHandle h(*this);
 
-	uint16_t* buffer = (uint16_t*)data;
-	for(size_t i = 0; i < size_t(width*height); i++) {
-		buffer[i] = modm::fromBigEndian(buffer[i]);
-	}
-
 	setClipping(upperLeft.getX(), upperLeft.getY(), width, height);
-	this->writeData((uint8_t*)buffer, width * height * 2);
+	this->writeData(data, width * height * 2);
 }
 
 template <class Interface, class Reset, class Backlight, std::size_t BufferSize>

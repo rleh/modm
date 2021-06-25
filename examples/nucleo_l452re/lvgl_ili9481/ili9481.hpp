@@ -50,10 +50,16 @@ protected:
 		SetPixelFormat = 0x3a,
 		PanelDrivingSetting = 0xc0,
 		FrameRateAndInversionControl = 0xc5,
+		InterfaceCtrl = 0xc6,
 		GammaSetting = 0xc8,
 		PowerSetting = 0xd0,
 		VcomControl = 0xd1,
 		PowerSettingNormalMode = 0xd2,
+
+		UnknowCommandB0 = 0xb0,
+		UnknowCommandE4 = 0xe4,
+		UnknowCommandF0 = 0xf0,
+		UnknowCommandF3 = 0xf3,
 
 		/*
 		SwReset = 0x01,
@@ -297,7 +303,7 @@ public:
 				 modm::accessor::Flash<uint8_t> data) final;
 
 	void
-	drawRaw(glcd::Point upperLeft, uint16_t width, uint16_t height, color::Rgb565* data);
+	drawRaw(glcd::Point upperLeft, uint16_t width, uint16_t height, uint8_t* data);
 
 	void
 	setScrollArea(uint16_t topFixedRows, uint16_t bottomFixedRows, uint16_t firstRow);
