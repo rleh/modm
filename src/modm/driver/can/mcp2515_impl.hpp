@@ -21,10 +21,6 @@
 #include "mcp2515_definitions.hpp"
 #include <modm/architecture/interface/assert.hpp>
 
-
-#undef	MODM_LOG_LEVEL
-#define	MODM_LOG_LEVEL modm::log::DISABLED
-
 // ----------------------------------------------------------------------------
 template <typename SPI, typename CS, typename INT>
 SPI modm::Mcp2515<SPI, CS, INT>::spi;

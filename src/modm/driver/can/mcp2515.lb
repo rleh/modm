@@ -17,14 +17,6 @@ def init(module):
 
 
 def prepare(module, options):
-    module.add_option(
-        EnumerationOption(
-            name="clock",
-            enumeration=["16MHz", "20MHz"],
-            description="Used clock for the MCP2515. The device configuration "
-                "is selected according to the clock speed.",
-            default="16MHz"))
-
     module.depends(
         ":architecture:accessor",
         ":architecture:assert",
@@ -40,4 +32,3 @@ def build(env):
     env.copy("mcp2515_impl.hpp")
     env.copy("mcp2515_bit_timings.hpp")
     env.copy("mcp2515_definitions.hpp")
-    env.template("mcp2515.cpp.in")
