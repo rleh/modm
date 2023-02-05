@@ -38,6 +38,12 @@ main()
 			modm::can::StandardIdentifier(0),
 			modm::can::StandardMask(0));
 
+	Mcan1::setMode(Mcan1::Mode::LoopBack);
+
+	Mcan1::setErrorInterruptCallback([](){
+		Board::Led1::set();
+	});
+
 	uint32_t counter{0};
 
 	while (true)
