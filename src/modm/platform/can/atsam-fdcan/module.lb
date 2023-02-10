@@ -80,7 +80,10 @@ def prepare(module, options):
 
     driver = device.get_driver("mcan")
 
-    for instance in listify(driver["instance"]):
+    # Ignore duplicate instances, because modm-devices data is buggy
+    instances = list(dict.fromkeys(listify(driver["instance"])))
+
+    for instance in instances:
         module.add_submodule(Instance(int(instance)))
 
     return True
