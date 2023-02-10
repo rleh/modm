@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <algorithm>
 #include <cstdint>
 #include <chrono>
 #include "../device.hpp"
