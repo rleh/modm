@@ -161,6 +161,10 @@ sendMsg(const modm::can::Message& message)
 
 	MessageRam::writeData(putIndex, {&message.data[0], message.getLength()});
 
+	// Make sure data is written to RAM before transfer is started.
+	// Otherwise messages are corrupted.
+	__DMB();
+
 	// Activate the corresponding transmission request
 	Regs()->MCAN_TXBAR = (1u << putIndex);
 
@@ -440,7 +444,7 @@ Mcan{{ id }}::isReadyToSend()
 %% if options["buffer.tx"] > 0
 	return txQueue.isNotFull();
 %% else
-	return isHardwareTxQueueFull();
+	return !isHardwareTxQueueFull();
 %% endif
 }
 

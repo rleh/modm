@@ -135,7 +135,7 @@ sendMsg(const modm::can::Message& message)
 {
 	using namespace modm::platform;
 
-	if (!Fdcan{{ id }}::isReadyToSend()) {
+	if (Fdcan{{ id }}::isHardwareTxQueueFull()) {
 		return false;
 	}
 
