@@ -169,8 +169,10 @@ sendMsg(const modm::can::Message& message)
 
 }
 
+namespace modm::platform {
+
 void
-modm::platform::Mcan{{ id }}::initializeWithPrescaler(
+Mcan{{ id }}::initializeWithPrescaler(
 		CanBitTimingConfiguration standardTimings,
 		std::optional<CanBitTimingConfiguration> fdDataTimings,
 		uint32_t interruptPriority, Mode startupMode, bool overwriteOnOverrun)
@@ -266,7 +268,7 @@ MODM_ISR(MCAN{{ id }}_INT0)
 	}
 %% endif
 
-	const auto callback = modm::platform::Mcan{{ id }}::getErrorInterruptCallback();
+	const auto callback = Mcan{{ id }}::getErrorInterruptCallback();
 	if (callback) {
 		const bool hasErrorInterrupt = (Regs()->MCAN_IR & (MCAN_IR_BO | MCAN_IR_EW | MCAN_IR_EP));
 		if (hasErrorInterrupt) {
@@ -306,7 +308,7 @@ MODM_ISR(MCAN{{ id }}_INT1)
 
 
 void
-modm::platform::Mcan{{ id }}::setMode(Mode mode)
+Mcan{{ id }}::setMode(Mode mode)
 {
 	EnterInitMode init;
 	Regs()->MCAN_CCCR |= MCAN_CCCR_CCE;
@@ -315,7 +317,7 @@ modm::platform::Mcan{{ id }}::setMode(Mode mode)
 
 
 void
-modm::platform::Mcan{{ id }}::configureMode(Mode mode)
+Mcan{{ id }}::configureMode(Mode mode)
 {
 	// Reset all mode register bits
 	Regs()->MCAN_TEST = 0;
@@ -347,7 +349,7 @@ modm::platform::Mcan{{ id }}::configureMode(Mode mode)
 
 
 void
-modm::platform::Mcan{{ id }}::configureInterrupts(uint32_t interruptPriority)
+Mcan{{ id }}::configureInterrupts(uint32_t interruptPriority)
 {
 	NVIC_SetPriority(MCAN{{ id }}_INT0_IRQn, interruptPriority);
 	NVIC_SetPriority(MCAN{{ id }}_INT1_IRQn, interruptPriority);
@@ -375,7 +377,7 @@ modm::platform::Mcan{{ id }}::configureInterrupts(uint32_t interruptPriority)
 
 
 void
-modm::platform::Mcan{{ id }}::setAutomaticRetransmission(bool retransmission)
+Mcan{{ id }}::setAutomaticRetransmission(bool retransmission)
 {
 	if (retransmission) {
 		// Enable retransmission
@@ -388,7 +390,7 @@ modm::platform::Mcan{{ id }}::setAutomaticRetransmission(bool retransmission)
 
 
 bool
-modm::platform::Mcan{{ id }}::isMessageAvailable()
+Mcan{{ id }}::isMessageAvailable()
 {
 %% if options["buffer.rx"] > 0
 	return rxQueue.isNotEmpty();
@@ -399,7 +401,7 @@ modm::platform::Mcan{{ id }}::isMessageAvailable()
 
 
 bool
-modm::platform::Mcan{{ id }}::getMessage(can::Message& message, uint8_t *filter_id, uint16_t *timestamp)
+Mcan{{ id }}::getMessage(can::Message& message, uint8_t *filter_id, uint16_t *timestamp)
 {
 %% if options["buffer.rx"] > 0
 	if (rxQueue.isEmpty()) {
@@ -433,7 +435,7 @@ modm::platform::Mcan{{ id }}::getMessage(can::Message& message, uint8_t *filter_
 
 
 bool
-modm::platform::Mcan{{ id }}::isReadyToSend()
+Mcan{{ id }}::isReadyToSend()
 {
 %% if options["buffer.tx"] > 0
 	return txQueue.isNotFull();
@@ -444,7 +446,7 @@ modm::platform::Mcan{{ id }}::isReadyToSend()
 
 
 bool
-modm::platform::Mcan{{ id }}::sendMessage(const can::Message& message)
+Mcan{{ id }}::sendMessage(const can::Message& message)
 {
 	if (isHardwareTxQueueFull()) {
 %% if options["buffer.tx"] > 0
@@ -463,8 +465,8 @@ modm::platform::Mcan{{ id }}::sendMessage(const can::Message& message)
 }
 
 
-modm::platform::Mcan{{ id }}::BusState
-modm::platform::Mcan{{ id }}::getBusState()
+Mcan{{ id }}::BusState
+Mcan{{ id }}::getBusState()
 {
 	if (Regs()->MCAN_PSR & MCAN_PSR_BO) {
 		return BusState::Off;
@@ -482,7 +484,7 @@ modm::platform::Mcan{{ id }}::getBusState()
 
 
 bool
-modm::platform::Mcan{{ id }}::setStandardFilter(
+Mcan{{ id }}::setStandardFilter(
 	uint8_t standardIndex, FilterConfig config,
 	modm::can::StandardIdentifier id,
 	modm::can::StandardMask mask)
@@ -502,7 +504,7 @@ modm::platform::Mcan{{ id }}::setStandardFilter(
 
 
 bool
-modm::platform::Mcan{{ id }}::setStandardFilter(
+Mcan{{ id }}::setStandardFilter(
 	uint8_t standardIndex, FilterConfig config,
 	modm::can::StandardIdentifier id0,
 	modm::can::StandardIdentifier id1)
@@ -522,7 +524,7 @@ modm::platform::Mcan{{ id }}::setStandardFilter(
 
 
 bool
-modm::platform::Mcan{{ id }}::setStandardRangeFilter(
+Mcan{{ id }}::setStandardRangeFilter(
 	uint8_t standardIndex, FilterConfig config,
 	modm::can::StandardIdentifier first,
 	modm::can::StandardIdentifier last)
@@ -542,7 +544,7 @@ modm::platform::Mcan{{ id }}::setStandardRangeFilter(
 
 
 bool
-modm::platform::Mcan{{ id }}::setExtendedFilter(
+Mcan{{ id }}::setExtendedFilter(
 	uint8_t extendedIndex, FilterConfig config,
 	modm::can::ExtendedIdentifier id,
 	modm::can::ExtendedMask mask)
@@ -563,7 +565,7 @@ modm::platform::Mcan{{ id }}::setExtendedFilter(
 
 
 bool
-modm::platform::Mcan{{ id }}::setExtendedFilter(
+Mcan{{ id }}::setExtendedFilter(
 	uint8_t extendedIndex, FilterConfig config,
 	modm::can::ExtendedIdentifier id0,
 	modm::can::ExtendedIdentifier id1)
@@ -584,7 +586,7 @@ modm::platform::Mcan{{ id }}::setExtendedFilter(
 
 
 bool
-modm::platform::Mcan{{ id }}::setExtendedRangeFilter(
+Mcan{{ id }}::setExtendedRangeFilter(
 	uint8_t extendedIndex, FilterConfig config,
 	modm::can::ExtendedIdentifier first,
 	modm::can::ExtendedIdentifier last)
@@ -605,7 +607,7 @@ modm::platform::Mcan{{ id }}::setExtendedRangeFilter(
 
 
 void
-modm::platform::Mcan{{ id }}::clearStandardFilters()
+Mcan{{ id }}::clearStandardFilters()
 {
 	EnterInitMode init;
 	for (unsigned i = 0; i < StandardFilterCount; ++i) {
@@ -615,10 +617,12 @@ modm::platform::Mcan{{ id }}::clearStandardFilters()
 
 
 void
-modm::platform::Mcan{{ id }}::clearExtendedFilters()
+Mcan{{ id }}::clearExtendedFilters()
 {
 	EnterInitMode init;
 	for (unsigned i = 0; i < ExtendedFilterCount; ++i) {
 		MessageRam::setExtendedFilterDisabled(i);
 	}
+}
+
 }
