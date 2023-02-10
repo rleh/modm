@@ -10,7 +10,6 @@
 
 #include <modm/board.hpp>
 #include <modm/debug/logger.hpp>
-#include <modm/board.hpp>
 
 using namespace modm::literals;
 using namespace modm::platform;
