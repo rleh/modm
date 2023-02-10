@@ -50,8 +50,7 @@ struct Message
 	}
 
 	constexpr Message(const modm::can::Message& rhs)
-		: identifier{rhs.identifier}, dlc{rhs.dlc},
-		  length{rhs.length}, flags{rhs.flags}
+		: identifier{rhs.identifier}, flags{rhs.flags}, dlc{rhs.dlc}, length{rhs.length}
 	{
 		std::copy(std::begin(rhs.data), std::end(rhs.data), std::begin(data));
 	}
@@ -160,7 +159,7 @@ public:
 	uint32_t identifier;
 	struct Flags
 	{
-		Flags() :
+		constexpr Flags() :
 			fd(0), brs(0), rtr(0), extended(1)
 		{
 		}
