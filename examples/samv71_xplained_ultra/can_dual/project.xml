@@ -1,0 +1,15 @@
+<library>
+  <extends>modm:samv71-xplained-ultra</extends>
+  <options>
+    <option name="modm:build:build.path">../../../build/samv71_xplained_ultra/can_dual</option>
+    <option name="modm:platform:can:0:buffer.tx">0</option>
+    <option name="modm:platform:can:1:buffer.tx">0</option>
+    <!-- <option name="modm:platform:can:0:buffer.rx">0</option>
+    <option name="modm:platform:can:1:buffer.rx">0</option> -->
+  </options>
+  <modules>
+    <module>modm:build:scons</module>
+    <module>modm:platform:can:0</module>
+    <module>modm:processing:protothread</module>
+  </modules>
+</library>
