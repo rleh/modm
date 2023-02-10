@@ -85,4 +85,4 @@ def prepare(module, options):
 
 def build(env):
     env.outbasepath = "modm/src/modm/platform/can"
-    env.copy("../stm32-fdcan/message_ram.hpp", "message_ram.hpp")
+    env.copy("message_ram.hpp")

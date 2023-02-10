@@ -167,8 +167,6 @@ modm::platform::Fdcan{{ id }}::initializeWithPrescaler(
 
 	EnterInitMode init;
 
-	MessageRam::setRamBase(uintptr_t(SRAMCAN_BASE + (MessageRam::Size * {{ id - 1 }})));
-
 	// Configure nominal bitrate
 	{{ reg }}->NBTP =
 		((standardTimings.sjw - 1) << FDCAN_NBTP_NSJW_Pos) |

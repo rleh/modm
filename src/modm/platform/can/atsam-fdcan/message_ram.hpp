@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Raphael Lehmann
+ * Copyright (c) 2019, 2023, Raphael Lehmann
  * Copyright (c) 2021, Christopher Durand
  * Copyright (c) 2022, Rasmus Kleist Hørlyck Sørensen
  *
@@ -11,8 +11,7 @@
  */
 // ----------------------------------------------------------------------------
 
-#ifndef MODM_STM32_FDCAN_COMMON_HPP
-#define MODM_STM32_FDCAN_COMMON_HPP
+#pragma once
 
 #include <cstdint>
 #include <concepts>
@@ -98,8 +97,10 @@ public:
 	static constexpr uint32_t StandardFilterSize	= 1*4;
 	static constexpr uint32_t ExtendedFilterCount	= 8;
 	static constexpr uint32_t ExtendedFilterSize	= 2*4;
-	static constexpr uint32_t RxFifoElements		= 3;
-	static constexpr uint32_t RxFifoElementSize		= 18*4;
+	static constexpr uint32_t RxFifo0Elements		= 3;
+	static constexpr uint32_t RxFifo1Elements		= 3;
+	static constexpr uint32_t RxBufferElements		= 0; // for compatibility with stm32
+	static constexpr uint32_t RxFifoBufferElementSize = 18*4;
 	static constexpr uint32_t TxEventFifoEntries	= 3;
 	static constexpr uint32_t TxEventFifoEntrySize	= 2*4;
 	static constexpr uint32_t TxFifoElements		= 3;
@@ -107,20 +108,36 @@ public:
 
 	/// Total message ram size in bytes
 	static constexpr uint32_t Size =
-		(StandardFilterCount * StandardFilterSize)    +
-		(ExtendedFilterCount * ExtendedFilterSize)    +
-		(RxFifoElements      * RxFifoElementSize) * 2 +
-		(TxEventFifoEntries  * TxEventFifoEntrySize)  +
+		(StandardFilterCount * StandardFilterSize)      +
+		(ExtendedFilterCount * ExtendedFilterSize)      +
+		(RxFifo0Elements     * RxFifoBufferElementSize) +
+		(RxFifo1Elements     * RxFifoBufferElementSize) +
+		(RxBufferElements    * RxFifoBufferElementSize) +
+		(TxEventFifoEntries  * TxEventFifoEntrySize)    +
 		(TxFifoElements      * TxFifoElementSize);
 
-	static constexpr uintptr_t RamBase = SRAMCAN_BASE + (Size * InstanceIndex);
+	// InstanceIndex is not really used (anymore), but needed to have a unique MessageRam<> type for
+	// each CAN peripheral
+	static inline uintptr_t RamBase;
+	static void setRamBase(uintptr_t address) { RamBase = address; }
+	static uintptr_t getRamBase() { return RamBase; }
 
-	static constexpr uintptr_t FilterListStandard = RamBase + 0;
-	static constexpr uintptr_t FilterListExtended = FilterListStandard + (StandardFilterCount * StandardFilterSize);
-	static constexpr uintptr_t RxFifo0 = FilterListExtended + (ExtendedFilterCount * ExtendedFilterSize);
-	static constexpr uintptr_t RxFifo1 = RxFifo0 + (RxFifoElements * RxFifoElementSize);
-	static constexpr uintptr_t TxEventFifo = RxFifo1 + (RxFifoElements * RxFifoElementSize);
-	static constexpr uintptr_t TxFifo = TxEventFifo + (TxEventFifoEntries * TxEventFifoEntrySize);
+	static constexpr uintptr_t FilterListStandardOffset = 0;
+	static constexpr uintptr_t FilterListExtendedOffset = FilterListStandardOffset + (StandardFilterCount * StandardFilterSize);
+	static constexpr uintptr_t RxFifo0Offset = FilterListExtendedOffset + (ExtendedFilterCount * ExtendedFilterSize);
+	static constexpr uintptr_t RxFifo1Offset = RxFifo0Offset + (RxFifo0Elements * RxFifoBufferElementSize);
+	static constexpr uintptr_t RxBufferOffset = RxFifo1Offset + (RxFifo1Elements * RxFifoBufferElementSize);
+	static constexpr uintptr_t TxEventFifoOffset = RxBufferOffset + (RxBufferElements * RxFifoBufferElementSize);
+	static constexpr uintptr_t TxFifoOffset = TxEventFifoOffset + (TxEventFifoEntries * TxEventFifoEntrySize);
+
+
+	static uintptr_t FilterListStandard() { return getRamBase() + FilterListStandardOffset; }
+	static uintptr_t FilterListExtended() { return getRamBase() + FilterListExtendedOffset; }
+	static uintptr_t RxFifo0() { return getRamBase() + RxFifo0Offset; }
+	static uintptr_t RxFifo1() { return getRamBase() + RxFifo1Offset; }
+	static uintptr_t RxBuffer() { return getRamBase() + RxBufferOffset; }
+	static uintptr_t TxEventFifo() { return getRamBase() + TxEventFifoOffset; }
+	static uintptr_t TxFifo() { return getRamBase() + TxFifoOffset; }
 
 	/// Address of element in RX FIFO
 	struct RxFifoAddress
@@ -129,11 +146,15 @@ public:
 		uint8_t getIndex;
 
 		/// \returns pointer to RX fifo element
-		uint32_t* ptr()
+		uint32_t*
+		ptr() const
 		{
-			uintptr_t address = RxFifo0 +
-				RxFifoElementSize * ((RxFifoElements * uint8_t(fifoIndex)) + getIndex);
-			return reinterpret_cast<uint32_t*>(address);
+			if (fifoIndex == 0)
+				return reinterpret_cast<uint32_t*>(RxFifo0() +
+												   (getIndex * RxFifoBufferElementSize));
+			else
+				return reinterpret_cast<uint32_t*>(RxFifo1() +
+												   (getIndex * RxFifoBufferElementSize));
 		}
 	};
 
@@ -141,14 +162,15 @@ public:
 	static uint32_t*
 	txFifoElement(uint8_t putIndex)
 	{
-		return reinterpret_cast<uint32_t*>(TxFifo + (putIndex * TxFifoElementSize));
+		return reinterpret_cast<uint32_t*>(getRamBase() + TxFifoOffset +
+										   (putIndex * TxFifoElementSize));
 	}
 
 	/// \returns pointer to standard filter element
 	static uint32_t*
 	standardFilter(uint8_t index)
 	{
-		const auto address = FilterListStandard + (index * StandardFilterSize);
+		const auto address = getRamBase() + FilterListStandardOffset + (index * StandardFilterSize);
 		return reinterpret_cast<uint32_t*>(address);
 	}
 
@@ -156,7 +178,7 @@ public:
 	static uint32_t*
 	extendedFilter(uint8_t index)
 	{
-		const auto address = FilterListExtended + (index * ExtendedFilterSize);
+		const auto address = getRamBase() + FilterListExtendedOffset + (index * ExtendedFilterSize);
 		return reinterpret_cast<uint32_t*>(address);
 	}
 public:
@@ -280,5 +302,3 @@ public:
 }	// namespace modm::platform::fdcan
 
 /// @endcond
-
-#endif	//  MODM_STM32_FDCAN{{ id }}_HPP
