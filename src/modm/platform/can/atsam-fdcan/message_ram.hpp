@@ -19,7 +19,6 @@
 
 #include <modm/math/utils/bit_constants.hpp>
 #include <modm/architecture/interface/register.hpp>
-#include "../device.hpp"
 
 /// @cond
 

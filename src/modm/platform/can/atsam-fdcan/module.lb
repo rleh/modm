@@ -35,8 +35,7 @@ class Instance(Module):
         env.substitutions = properties
         env.outbasepath = "modm/src/modm/platform/can"
 
-        env.template("can.hpp.in", "can_{}.hpp".format(self.instance))
-        env.template("can.cpp.in", "can_{}.cpp".format(self.instance))
+        env.template("can_instance.hpp.in", "can_{}.hpp".format(self.instance))
 
 
 def init(module):
@@ -70,4 +69,6 @@ def prepare(module, options):
 
 def build(env):
     env.outbasepath = "modm/src/modm/platform/can"
+    env.copy("can.hpp")
+    env.copy("can.cpp")
     env.copy("message_ram.hpp")

@@ -25,27 +25,14 @@
 namespace modm::platform
 {
 /**
- * @brief		MCAN{{ id }} (CAN with Flexible Data-Rate)
- *
- * The controller area network (CAN) subsystem consists of one CAN module,
- * a shared Message RAM memory and a configuration block.
- * The modules (MCAN) are compliant with ISO 11898-1: 2015 (CAN protocol
- * specification version 2.0 part A, B) and CAN FD protocol specification version 1.0.
- * A 0.8 Kbyte Message RAM per MCAN instance implements filters, receive FIFOs,
- * transmit event FIFOs and transmit FIFOs.
- *
- * ## Filter
- * Up to 28 filters can be defined for 11-bit IDs, up to 8 filters for 29-bit IDs.
- * The filter banks are not shared between the CAN instances.
- *
- * ## Configuration
- * You can set the buffer size using the `tx_buffer` and `rx_buffer` parameters.
+ * @brief		MCAN (CAN with Flexible Data-Rate)
  *
  * @author		Raphael Lehmann <raphael@rleh.de>
  * @author		Christopher Durand <christopher.durand@rwth-aachen.de>
- * @ingroup		modm_platform_can_{{ id }}
+ * @ingroup		modm_platform_can
  */
-class Mcan{{ id }} : public ::modm::Can
+template<uint8_t id, class MessageRamConfig>
+class McanDriver : public ::modm::Can
 {
 public:
 	enum class
@@ -67,10 +54,16 @@ public:
 	using ErrorCallback = void (*)();
 
 private:
-	static auto* Regs() { return {{ reg }}; }
-	static constexpr uint8_t id = {{ id  }};
+	static auto* Regs() {
+		if constexpr (id == 0)
+			return MCAN0;
+		else if constexpr (id == 1)
+			return MCAN1;
+		else
+			return nullptr;
+	}
 
-	using MessageRam = fdcan::MessageRam<id>;
+	using MessageRam = fdcan::MessageRam<id, MessageRamConfig>;
 	static_assert(MessageRam::StandardFilterCount <= 128, "A maximum of 128 standard filters are allowed.");
 	static_assert(MessageRam::ExtendedFilterCount <= 64, "A maximum of 64 standard filters are allowed.");
 	static_assert(MessageRam::RxFifo0Elements <= 64, "A maximum of 64 Rx Fifo 0 elements are allowed.");
@@ -84,6 +77,13 @@ private:
 	messageRamMemory{};
 
 	static inline volatile ErrorCallback errorCallback_ = nullptr;
+
+	struct RxMessage
+	{
+		modm::can::Message message;
+		uint8_t filter_id;
+		uint16_t timestamp;
+	};
 
 	static void
 	initializeWithPrescaler(
@@ -104,16 +104,16 @@ public:
 		using RxPin = GetPin_t<PeripheralPin::Rx, Pins...>;
 		using TxPin = GetPin_t<PeripheralPin::Tx, Pins...>;
 
-		using Peripheral = Peripherals::Mcan<{{ id | int }}>;
+		using Peripheral = typename Peripherals::Mcan<id>;
 
 		if constexpr (!std::is_void_v<RxPin>) {
 			RxPin::configure(inputType);
-			using RxConnector = typename RxPin::template Connector<Peripheral, Peripheral::Canrx<{{ id | int }}>>;
+			using RxConnector = typename RxPin::template Connector<Peripheral, typename Peripheral::template Canrx<id>>;
 			RxConnector::connect();
 		}
 
 		if constexpr (!std::is_void_v<TxPin>) {
-			using TxConnector = typename TxPin::template Connector<Peripheral, Peripheral::Cantx<{{ id | int }}>>;
+			using TxConnector = typename TxPin::template Connector<Peripheral, typename Peripheral::template Cantx<id>>;
 			TxConnector::connect();
 		}
 	}
@@ -122,7 +122,7 @@ public:
 	 * Enables the clock for the CAN controller and resets all settings
 	 *
 	 * \tparam SystemClock
-	 * 			System clock struct with an MCAN{{ id }} member containing
+	 * 			System clock struct with an MCAN member containing
 	 * 			the clock speed supplied to the peripheral.
 	 * 			\warning	The CAN subsystem prescaler can be configured using
 	 * 						the RCC module and must be taken into account in
@@ -141,7 +141,7 @@ public:
 	 * 			Not used in this driver: Interrupt vector priority (0=highest to 15=lowest)
 	 * \param startupMode
 	 * 			Mode of operation set after initialization
-	 * 			\see Fdcan{{ id }}::Mode
+	 * 			\see Mcan<id>::Mode
 	 * \param overwriteOnOverrun
 	 * 			Once a receive FIFO is full the next incoming message
 	 * 			will overwrite the previous one if \c true otherwise
@@ -161,7 +161,7 @@ public:
 				bool overwriteOnOverrun = true)
 	{
 		using Timings = CanBitTiming<
-			SystemClock::Mcan{{ id }},
+			SystemClock::Mcan,
 			bitrate,
 			9, 8, 7, 7
 		>;
@@ -171,7 +171,7 @@ public:
 
 		if constexpr (fastDataBitrate != 0) {
 			using DataTimings = CanBitTiming<
-				SystemClock::Mcan{{ id }},
+				SystemClock::Mcan,
 				fastDataBitrate,
 				5, 5, 4, 4
 			>;
@@ -225,7 +225,7 @@ public:
 	/// \returns true if filter index is valid
 	static bool
 	setStandardFilter(uint8_t standardIndex, FilterConfig config,
-		modm::can::StandardIdentifier id,
+		modm::can::StandardIdentifier id_,
 		modm::can::StandardMask mask);
 
 	/// Set standard filter with dual ids
@@ -251,7 +251,7 @@ public:
 	/// \returns true if filter index is valid
 	static bool
 	setExtendedFilter(uint8_t extendedIndex, FilterConfig config,
-		modm::can::ExtendedIdentifier id,
+		modm::can::ExtendedIdentifier id_,
 		modm::can::ExtendedMask mask);
 
 	/// Set standard filter with dual ids
@@ -358,7 +358,7 @@ private:
 				modm::delay(1us);
 				// Wait until the initialization mode is entered.
 			}
-			modm_assert(deadlockPreventer > 0, "can.{{ id }}.init", "timeout expired");
+			modm_assert(deadlockPreventer > 0, "can.init", "timeout expired");
 			Regs()->MCAN_CCCR |= MCAN_CCCR_CCE;
 		}
 
@@ -371,6 +371,31 @@ private:
 		EnterInitMode(const EnterInitMode&) = delete;
 		EnterInitMode& operator=(const EnterInitMode&) = delete;
 	};
+
+private:
+	bool
+	isHardwareTxQueueFull();
+
+	bool
+	rxFifo0HasMessage();
+
+	bool
+	rxFifo1HasMessage();
+
+	void
+	acknowledgeRxFifoRead(uint8_t fifoIndex, uint8_t getIndex);
+
+	uint8_t
+	retrieveRxFifoGetIndex(uint8_t fifoIndex);
+
+	uint8_t
+	retrieveTxFifoPutIndex();
+
+	void
+	readMsg(modm::can::Message& message, uint8_t fifoIndex, uint8_t* filter_id, uint16_t *timestamp);
+
+	bool
+	sendMsg(const modm::can::Message& message);
 };
 
 }	// namespace modm::platform
