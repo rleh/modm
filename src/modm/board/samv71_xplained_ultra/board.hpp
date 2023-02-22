@@ -33,8 +33,7 @@ struct SystemClock
 	static constexpr uint32_t Spi0 = Mck;
 
 	static constexpr uint32_t Pck5 = 80_MHz;
-	static constexpr uint32_t Mcan0 = Pck5;
-	static constexpr uint32_t Mcan1 = Pck5;
+	static constexpr uint32_t Mcan = Pck5;
 
 //	static constexpr uint32_t Usb = 48_MHz;
 
@@ -85,7 +84,7 @@ namespace Can
 /// @{
 using Rx = GpioC12;
 using Tx = GpioC14;
-using Can = Mcan1;
+using Can = Mcan1<>;
 /// @}
 }
 
