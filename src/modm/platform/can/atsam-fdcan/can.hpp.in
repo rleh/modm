@@ -17,7 +17,6 @@
 #include <modm/architecture/interface/can.hpp>
 #include <modm/architecture/interface/can_filter.hpp>
 #include <modm/platform/gpio/connector.hpp>
-#include "../device.hpp"
 
 #include "can_bit_timings.hpp"
 
@@ -65,17 +64,20 @@ public:
 
 	};
 
-public:
-	// Expose jinja template parameters to be checked by e.g. drivers or application
-	static constexpr size_t RxBufferSize = {{ options["buffer.rx"] }};
-	static constexpr size_t TxBufferSize = {{ options["buffer.tx"] }};
-
 	using ErrorCallback = void (*)();
 
 private:
 	static auto* Regs() { return {{ reg }}; }
-	static constexpr size_t id = {{ id  }};
+	static constexpr uint8_t id = {{ id  }};
+
 	using MessageRam = fdcan::MessageRam<id>;
+	static_assert(MessageRam::StandardFilterCount <= 128, "A maximum of 128 standard filters are allowed.");
+	static_assert(MessageRam::ExtendedFilterCount <= 64, "A maximum of 64 standard filters are allowed.");
+	static_assert(MessageRam::RxFifo0Elements <= 64, "A maximum of 64 Rx Fifo 0 elements are allowed.");
+	static_assert(MessageRam::RxFifo1Elements <= 64, "A maximum of 64 Rx Fifo 1 elements are allowed.");
+	static_assert(MessageRam::RxBufferElements <= 64, "A maximum of 64 dedicated Rx buffers are allowed.");
+	static_assert(MessageRam::TxEventFifoEntries <= 32, "A maximum of 32 Tx Event Fifo elements are allowed.");
+	static_assert(MessageRam::TxFifoElements <= 32, "A maximum of 32 Tx Fifo elements are allowed.");
 	static_assert(MessageRam::Size <= 4352*4, "Max message ram size is 4352 words.");
 
 	static inline std::array<uint32_t, MessageRam::Size/4> modm_aligned(4)
@@ -87,10 +89,14 @@ private:
 	initializeWithPrescaler(
 			CanBitTimingConfiguration standardTimings,
 			std::optional<CanBitTimingConfiguration> fdDataTimings,
-			uint32_t interruptPriority, Mode startupMode, bool overwriteOnOverrun
+			Mode startupMode, bool overwriteOnOverrun
 			);
 
 public:
+	// Expose template parameters to be checked by e.g. drivers or application
+	static constexpr size_t RxBufferSize = std::min(MessageRam::RxFifo0Elements, MessageRam::RxFifo1Elements);
+	static constexpr size_t TxBufferSize = MessageRam::TxFifoElements;
+
 	template<class... Pins>
 	static void
 	connect(modm::platform::InputType inputType = modm::platform::InputType::Floating)
@@ -132,7 +138,7 @@ public:
 	 * 			Set to 0 to disable CANFD support.
 	 *
 	 * \param interruptPriority
-	 * 			Interrupt vector priority (0=highest to 15=lowest)
+	 * 			Not used in this driver: Interrupt vector priority (0=highest to 15=lowest)
 	 * \param startupMode
 	 * 			Mode of operation set after initialization
 	 * 			\see Fdcan{{ id }}::Mode
@@ -151,7 +157,7 @@ public:
 		bitrate_t fastDataBitrate=0 // 0: MCAN mode disabled
 	>
 	static inline void
-	initialize(	uint32_t interruptPriority, Mode startupMode = Mode::Normal,
+	initialize([[maybe_unused]] uint32_t interruptPriority = 0, Mode startupMode = Mode::Normal,
 				bool overwriteOnOverrun = true)
 	{
 		using Timings = CanBitTiming<
@@ -177,7 +183,6 @@ public:
 		return initializeWithPrescaler(
 			Timings::getBitTimings(),
 			fastDataTimings,
-			interruptPriority,
 			startupMode,
 			overwriteOnOverrun);
 	}
@@ -341,9 +346,6 @@ public:
 private:
 	static void
 	configureMode(Mode mode);
-
-	static void
-	configureInterrupts(uint32_t interruptPriority);
 
 	struct EnterInitMode
 	{

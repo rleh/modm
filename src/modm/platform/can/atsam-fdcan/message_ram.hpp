@@ -26,9 +26,21 @@
 namespace modm::platform::fdcan
 {
 
+struct DefaultMessageRamConfig
+{
+	static constexpr uint32_t StandardFilterCount 	= 1;
+	static constexpr uint32_t ExtendedFilterCount	= 1;
+	static constexpr uint32_t RxFifo0Elements		= 32;
+	static constexpr uint32_t RxFifo1Elements		= 32;
+	static constexpr uint32_t RxBufferElements		= 1;
+	static constexpr uint32_t TxEventFifoEntries	= 1;
+	static constexpr uint32_t TxFifoElements		= 32;
+};
+
 /// Internal class to manage FDCAN message ram
 /// \tparam InstanceIndex index of FDCAN instance (starts at 0)
-template<uint8_t InstanceIndex>
+/// \tparam Config configuration of the Tx/Rx/Filter/... buffer sizes
+template<uint8_t InstanceIndex, class Config = DefaultMessageRamConfig>
 class MessageRam
 {
 public:
@@ -93,17 +105,17 @@ public:
 		Reject		= 0b011u << 27
 	};
 public:
-	static constexpr uint32_t StandardFilterCount 	= 28;
+	static constexpr uint32_t StandardFilterCount 	= Config::StandardFilterCount;
 	static constexpr uint32_t StandardFilterSize	= 1*4;
-	static constexpr uint32_t ExtendedFilterCount	= 8;
+	static constexpr uint32_t ExtendedFilterCount	= Config::ExtendedFilterCount;
 	static constexpr uint32_t ExtendedFilterSize	= 2*4;
-	static constexpr uint32_t RxFifo0Elements		= 3;
-	static constexpr uint32_t RxFifo1Elements		= 3;
-	static constexpr uint32_t RxBufferElements		= 0; // for compatibility with stm32
+	static constexpr uint32_t RxFifo0Elements		= Config::RxFifo0Elements;
+	static constexpr uint32_t RxFifo1Elements		= Config::RxFifo1Elements;
+	static constexpr uint32_t RxBufferElements		= Config::RxBufferElements;
 	static constexpr uint32_t RxFifoBufferElementSize = 18*4;
-	static constexpr uint32_t TxEventFifoEntries	= 3;
+	static constexpr uint32_t TxEventFifoEntries	= Config::TxEventFifoEntries;
 	static constexpr uint32_t TxEventFifoEntrySize	= 2*4;
-	static constexpr uint32_t TxFifoElements		= 3;
+	static constexpr uint32_t TxFifoElements		= Config::TxFifoElements;
 	static constexpr uint32_t TxFifoElementSize		= 18*4;
 
 	/// Total message ram size in bytes

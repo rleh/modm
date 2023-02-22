@@ -11,20 +11,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # -----------------------------------------------------------------------------
 
-def load_options(module):
-    module.add_option(
-        NumericOption(
-            name="buffer.tx",
-            description="",
-            minimum=0, maximum=2 ** 16 - 2,
-            default=32))
-    module.add_option(
-        NumericOption(
-            name="buffer.rx",
-            description="",
-            minimum=1, maximum=2 ** 16 - 2,
-            default=32))
-
 class Instance(Module):
     def __init__(self, instance):
         self.instance = instance
@@ -34,7 +20,6 @@ class Instance(Module):
         module.description = "Instance {}".format(self.instance)
 
     def prepare(self, module, options):
-        load_options(module)
         return True
 
     def build(self, env):
@@ -67,16 +52,11 @@ def prepare(module, options):
 
     module.depends(
         ":architecture:assert",
-        ":architecture:atomic",
         ":architecture:can",
         ":architecture:clock",
-        ":architecture:delay",
-        ":architecture:interrupt",
         ":cmsis:device",
-        ":debug",
         ":platform:can.common",
-        ":platform:gpio",
-        ":utils")
+        ":platform:gpio")
 
     driver = device.get_driver("mcan")
 

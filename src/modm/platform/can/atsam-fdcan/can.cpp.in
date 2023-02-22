@@ -9,16 +9,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#include <queue>
-#include <array>
-#include <algorithm>
-#include <cstring>
-#include <optional>
-
-#include <modm/architecture/driver/atomic/queue.hpp>
-#include <modm/architecture/interface/delay.hpp>
 #include <modm/architecture/interface/assert.hpp>
-#include <modm/architecture/interface/interrupt.hpp>
 #include <modm/platform/clock/clockgen.hpp>
 
 #include "can_{{ id }}.hpp"
@@ -29,18 +20,11 @@ using MessageRam = modm::platform::fdcan::MessageRam<{{ id }}>;
 
 auto* Regs() { return {{ reg }}; }
 
-%% if options["buffer.tx"] > 0
-modm::atomic::Queue<modm::can::Message, {{ options["buffer.tx"] }}> txQueue;
-%% endif
-
 struct RxMessage {
     modm::can::Message message;
     uint8_t filter_id;
     uint16_t timestamp;
 };
-%% if options["buffer.rx"] > 0
-modm::atomic::Queue<RxMessage, {{ options["buffer.rx"] }}> rxQueue;
-%% endif
 
 bool
 isHardwareTxQueueFull()
@@ -179,7 +163,7 @@ void
 Mcan{{ id }}::initializeWithPrescaler(
 		CanBitTimingConfiguration standardTimings,
 		std::optional<CanBitTimingConfiguration> fdDataTimings,
-		uint32_t interruptPriority, Mode startupMode, bool overwriteOnOverrun)
+		Mode startupMode, bool overwriteOnOverrun)
 {
 	ClockGen::enable<ClockPeripheral::Can{{ id }}>();
 
@@ -188,11 +172,14 @@ Mcan{{ id }}::initializeWithPrescaler(
 	MessageRam::setRamBase(uintptr_t(&messageRamMemory[0]));
 
 	// Configure message ram upper 16 bits
-%% if id == 0
-	MATRIX->CCFG_CAN0 = (MATRIX->CCFG_CAN0 & ~CCFG_CAN0_CAN0DMABA_Msk) | CCFG_CAN0_CAN0DMABA((MessageRam::getRamBase() >> 16));
-%% else
-	MATRIX->CCFG_SYSIO = (MATRIX->CCFG_SYSIO & ~CCFG_SYSIO_CAN1DMABA_Msk) | CCFG_SYSIO_CAN1DMABA((MessageRam::getRamBase() >> 16));
-%% endif
+	if constexpr (id == 0) {
+		MATRIX->CCFG_CAN0 = (MATRIX->CCFG_CAN0 & ~CCFG_CAN0_CAN0DMABA_Msk) |
+							CCFG_CAN0_CAN0DMABA((MessageRam::getRamBase() >> 16));
+	}
+	else {
+		MATRIX->CCFG_SYSIO = (MATRIX->CCFG_SYSIO & ~CCFG_SYSIO_CAN1DMABA_Msk) |
+							 CCFG_SYSIO_CAN1DMABA((MessageRam::getRamBase() >> 16));
+	}
 
 	// Configure nominal bitrate
 	Regs()->MCAN_NBTP =
@@ -217,8 +204,6 @@ Mcan{{ id }}::initializeWithPrescaler(
 	// base due to the different CAN bit times between arbitration phase and data phase.
 	Regs()->MCAN_TSCC = (1 << MCAN_TSCC_TSS_Pos);
 
-	configureInterrupts(interruptPriority);
-
 	// Fifo configuration
 	Regs()->MCAN_RXF0C = (overwriteOnOverrun ? MCAN_RXF0C_F0OM : 0) |
 						 MCAN_RXF0C_F0S(MessageRam::RxFifo0Elements) |
@@ -232,8 +217,8 @@ Mcan{{ id }}::initializeWithPrescaler(
 	Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_64_BYTE | MCAN_RXESC_F1DS_64_BYTE | MCAN_RXESC_RBDS_64_BYTE;
 	Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_64_BYTE;
 
-	// Rx buffer (dedicated) is not used
-	//Regs()->MCAN_RXBC = MCAN_RXBC_RBSA(MessageRam::RxBuffer >> 2);
+	// Configure dedicated Rx buffer address
+	Regs()->MCAN_RXBC = MCAN_RXBC_RBSA(MessageRam::RxBuffer() >> 2);
 
 	// Filter configuration
 	Regs()->MCAN_SIDFC = MCAN_SIDFC_LSS(MessageRam::StandardFilterCount) |
@@ -244,9 +229,9 @@ Mcan{{ id }}::initializeWithPrescaler(
 	// reject non-matching frames, allow remote frames
 	Regs()->MCAN_GFC = MCAN_GFC_ANFE(0b11) | MCAN_GFC_ANFS(0b11);
 
-	// Tx buffer: queue mode
+	// Tx buffer: queue mode, no dedicated transmit buffers
 	Regs()->MCAN_TXBC = MCAN_TXBC_TFQM | MCAN_TXBC_TFQS(MessageRam::TxFifoElements) |
-						MCAN_TXBC_TBSA(MessageRam::TxFifo() >> 2);
+						MCAN_TXBC_NDTB(0) | MCAN_TXBC_TBSA(MessageRam::TxFifo() >> 2);
 
 	Regs()->MCAN_TXEFC = MCAN_TXEFC_EFS(MessageRam::TxEventFifoEntries) |
 						 MCAN_TXEFC_EFSA(MessageRam::TxEventFifo() >> 2);
@@ -260,56 +245,6 @@ Mcan{{ id }}::initializeWithPrescaler(
 
 	configureMode(startupMode);
 }
-
-// line 0 used as TX and error interrupt
-// generated on finished frame transmission and error state
-MODM_ISR(MCAN{{ id }}_INT0)
-{
-%% if options["buffer.tx"] > 0
-	if (txQueue.isNotEmpty()) {
-		sendMsg(txQueue.get());
-		txQueue.pop();
-	}
-%% endif
-
-	const auto callback = Mcan{{ id }}::getErrorInterruptCallback();
-	if (callback) {
-		const bool hasErrorInterrupt = (Regs()->MCAN_IR & (MCAN_IR_BO | MCAN_IR_EW | MCAN_IR_EP));
-		if (hasErrorInterrupt) {
-			callback();
-		}
-	}
-	Regs()->MCAN_IR = MCAN_IR_TC | MCAN_IR_BO | MCAN_IR_EW | MCAN_IR_EP;
-}
-
-
-// line 1 used as RX interrupt
-// generated on received frame
-MODM_ISR(MCAN{{ id }}_INT1)
-{
-%% if options["buffer.rx"] > 0
-	RxMessage rxMessage;
-
-	if (rxFifo0HasMessage()) {
-		readMsg(rxMessage.message, 0, &rxMessage.filter_id, &rxMessage.timestamp);
-		// acknowledge interrupt flag
-		Regs()->MCAN_IR = MCAN_IR_RF0N;
-
-		modm_assert_continue_ignore(rxQueue.push(rxMessage), "fdcan.rx.buffer",
-			"CAN receive software buffer overflowed!", {{ id }});
-	}
-
-	if (rxFifo1HasMessage()) {
-		readMsg(rxMessage.message, 1, &rxMessage.filter_id, &rxMessage.timestamp);
-		// acknowledge interrupt flag
-		Regs()->MCAN_IR = MCAN_IR_RF1N;
-
-		modm_assert_continue_ignore(rxQueue.push(rxMessage), "fdcan.rx.buffer",
-			"CAN receive software buffer overflowed!", {{ id }});
-	}
-%% endif
-}
-
 
 void
 Mcan{{ id }}::setMode(Mode mode)
@@ -351,35 +286,6 @@ Mcan{{ id }}::configureMode(Mode mode)
 	}
 }
 
-
-void
-Mcan{{ id }}::configureInterrupts(uint32_t interruptPriority)
-{
-	NVIC_SetPriority(MCAN{{ id }}_INT0_IRQn, interruptPriority);
-	NVIC_SetPriority(MCAN{{ id }}_INT1_IRQn, interruptPriority);
-
-	NVIC_EnableIRQ(MCAN{{ id }}_INT0_IRQn);
-	NVIC_EnableIRQ(MCAN{{ id }}_INT1_IRQn);
-
-	// enable both interrupts lines (0 and 1)
-	Regs()->MCAN_ILE = MCAN_ILE_EINT1 | MCAN_ILE_EINT0;
-	// assign 'new message', 'watermark reached' and 'fifo full' interrupts to line 1
-	Regs()->MCAN_ILS = (MCAN_ILS_RF0NL | MCAN_ILS_RF0WL | MCAN_ILS_RF0FL | MCAN_ILS_RF1NL | MCAN_ILS_RF1WL | MCAN_ILS_RF1FL);
-
-	Regs()->MCAN_IE = 0;
-%% if options["buffer.tx"] > 0
-	// enable transmission complete
-	Regs()->MCAN_IE |= MCAN_IE_TCE;
-	// enable TX interrupts for all (32?) buffers
-	Regs()->MCAN_TXBTIE = 0xffffffff;
-%% endif
-%% if options["buffer.rx"] > 0
-	// enable 'new message' interrupts for both RX FIFOs
-	Regs()->MCAN_IE |= (MCAN_IE_RF0NE | MCAN_IE_RF1NE);
-%% endif
-}
-
-
 void
 Mcan{{ id }}::setAutomaticRetransmission(bool retransmission)
 {
@@ -392,82 +298,36 @@ Mcan{{ id }}::setAutomaticRetransmission(bool retransmission)
 	}
 }
 
-
 bool
 Mcan{{ id }}::isMessageAvailable()
 {
-%% if options["buffer.rx"] > 0
-	return rxQueue.isNotEmpty();
-%% else
 	return rxFifo0HasMessage() || rxFifo1HasMessage();
-%% endif
 }
-
 
 bool
 Mcan{{ id }}::getMessage(can::Message& message, uint8_t *filter_id, uint16_t *timestamp)
 {
-%% if options["buffer.rx"] > 0
-	if (rxQueue.isEmpty()) {
-		// no message in the receive buffer
-		return false;
-	} else {
-		auto& rxMessage = rxQueue.get();
-		message = rxMessage.message;
-		if (filter_id != nullptr) {
-			(*filter_id) = rxMessage.filter_id;
-		}
-		if (timestamp != nullptr) {
-			(*timestamp) = rxMessage.timestamp;
-		}
-		rxQueue.pop();
-		return true;
-	}
-%% else
 	if (rxFifo0HasMessage()) {
 		readMsg(message, 0, filter_id, timestamp);
-		releaseRxFifo0Message();
 		return true;
 	} else if (rxFifo1HasMessage()) {
 		readMsg(message, 1, filter_id, timestamp);
-		releaseRxFifo1Message();
 		return true;
 	}
 	return false;
-%% endif
 }
-
 
 bool
 Mcan{{ id }}::isReadyToSend()
 {
-%% if options["buffer.tx"] > 0
-	return txQueue.isNotFull();
-%% else
 	return !isHardwareTxQueueFull();
-%% endif
 }
-
 
 bool
 Mcan{{ id }}::sendMessage(const can::Message& message)
 {
-	if (isHardwareTxQueueFull()) {
-%% if options["buffer.tx"] > 0
-		if (txQueue.isFull()) {
-			return false;
-		}
-		txQueue.push(message);
-		return true;
-%% else
-		return false;
-%% endif
-	} else {
-		sendMsg(message);
-		return true;
-	}
+	return sendMsg(message);
 }
-
 
 Mcan{{ id }}::BusState
 Mcan{{ id }}::getBusState()
@@ -497,6 +357,7 @@ Mcan{{ id }}::setStandardFilter(
 		return false;
 	}
 
+	// TODO: Is INIT mode really necessary to add/modify filters?
 	EnterInitMode init;
 
 	MessageRam::setStandardFilter(standardIndex,
@@ -517,6 +378,7 @@ Mcan{{ id }}::setStandardFilter(
 		return false;
 	}
 
+	// TODO: Is INIT mode really necessary to add/modify filters?
 	EnterInitMode init;
 
 	MessageRam::setStandardFilter(standardIndex,
