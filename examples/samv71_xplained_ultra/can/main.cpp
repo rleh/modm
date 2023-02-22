@@ -24,6 +24,8 @@ main()
 {
 	Board::initialize();
 
+	using Mcan1 = modm::platform::Mcan1<>;
+
 	MODM_LOG_INFO << "CAN Test Program" << modm::endl;
 
 	MODM_LOG_INFO << "Mcan1: Initializing with 125kbps for boards CAN transceiver (PC12/PC14)." << modm::endl;
