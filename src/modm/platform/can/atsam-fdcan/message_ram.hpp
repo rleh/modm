@@ -29,11 +29,17 @@ struct DefaultMessageRamConfig
 {
 	static constexpr uint32_t StandardFilterCount 	= 1;
 	static constexpr uint32_t ExtendedFilterCount	= 1;
+
 	static constexpr uint32_t RxFifo0Elements		= 32;
+	static constexpr uint32_t RxFifo0ElementSize	= 2*4 + modm::can::Message::capacity;
 	static constexpr uint32_t RxFifo1Elements		= 32;
+	static constexpr uint32_t RxFifo1ElementSize	= 2*4 + modm::can::Message::capacity;
 	static constexpr uint32_t RxBufferElements		= 1;
+	static constexpr uint32_t RxBufferElementSize	= 2*4 + modm::can::Message::capacity;
+
 	static constexpr uint32_t TxEventFifoEntries	= 1;
 	static constexpr uint32_t TxFifoElements		= 32;
+	static constexpr uint32_t TxFifoElementSize		= 2*4 + modm::can::Message::capacity;
 };
 
 /// Internal class to manage FDCAN message ram
@@ -109,23 +115,25 @@ public:
 	static constexpr uint32_t ExtendedFilterCount	= Config::ExtendedFilterCount;
 	static constexpr uint32_t ExtendedFilterSize	= 2*4;
 	static constexpr uint32_t RxFifo0Elements		= Config::RxFifo0Elements;
+	static constexpr uint32_t RxFifo0ElementSize	= Config::RxFifo0ElementSize;
 	static constexpr uint32_t RxFifo1Elements		= Config::RxFifo1Elements;
+	static constexpr uint32_t RxFifo1ElementSize	= Config::RxFifo1ElementSize;
 	static constexpr uint32_t RxBufferElements		= Config::RxBufferElements;
-	static constexpr uint32_t RxFifoBufferElementSize = 18*4;
+	static constexpr uint32_t RxBufferElementSize	= Config::RxBufferElementSize;
 	static constexpr uint32_t TxEventFifoEntries	= Config::TxEventFifoEntries;
 	static constexpr uint32_t TxEventFifoEntrySize	= 2*4;
 	static constexpr uint32_t TxFifoElements		= Config::TxFifoElements;
-	static constexpr uint32_t TxFifoElementSize		= 18*4;
+	static constexpr uint32_t TxFifoElementSize		= Config::TxFifoElementSize;
 
 	/// Total message ram size in bytes
 	static constexpr uint32_t Size =
-		(StandardFilterCount * StandardFilterSize)      +
-		(ExtendedFilterCount * ExtendedFilterSize)      +
-		(RxFifo0Elements     * RxFifoBufferElementSize) +
-		(RxFifo1Elements     * RxFifoBufferElementSize) +
-		(RxBufferElements    * RxFifoBufferElementSize) +
-		(TxEventFifoEntries  * TxEventFifoEntrySize)    +
-		(TxFifoElements      * TxFifoElementSize);
+		(StandardFilterCount * StandardFilterSize) +
+		(ExtendedFilterCount * ExtendedFilterSize) +
+		(RxFifo0Elements * RxFifo0ElementSize) +
+		(RxFifo1Elements * RxFifo1ElementSize) +
+		(RxBufferElements * RxBufferElementSize) +
+		(TxEventFifoEntries * TxEventFifoEntrySize) +
+		(TxFifoElements * TxFifoElementSize);
 
 	// InstanceIndex is not really used (anymore), but needed to have a unique MessageRam<> type for
 	// each CAN peripheral
@@ -136,9 +144,9 @@ public:
 	static constexpr uintptr_t FilterListStandardOffset = 0;
 	static constexpr uintptr_t FilterListExtendedOffset = FilterListStandardOffset + (StandardFilterCount * StandardFilterSize);
 	static constexpr uintptr_t RxFifo0Offset = FilterListExtendedOffset + (ExtendedFilterCount * ExtendedFilterSize);
-	static constexpr uintptr_t RxFifo1Offset = RxFifo0Offset + (RxFifo0Elements * RxFifoBufferElementSize);
-	static constexpr uintptr_t RxBufferOffset = RxFifo1Offset + (RxFifo1Elements * RxFifoBufferElementSize);
-	static constexpr uintptr_t TxEventFifoOffset = RxBufferOffset + (RxBufferElements * RxFifoBufferElementSize);
+	static constexpr uintptr_t RxFifo1Offset = RxFifo0Offset + (RxFifo0Elements * RxFifo0ElementSize);
+	static constexpr uintptr_t RxBufferOffset = RxFifo1Offset + (RxFifo1Elements * RxFifo1ElementSize);
+	static constexpr uintptr_t TxEventFifoOffset = RxBufferOffset + (RxBufferElements * RxBufferElementSize);
 	static constexpr uintptr_t TxFifoOffset = TxEventFifoOffset + (TxEventFifoEntries * TxEventFifoEntrySize);
 
 
@@ -162,10 +170,10 @@ public:
 		{
 			if (fifoIndex == 0)
 				return reinterpret_cast<uint32_t*>(RxFifo0() +
-												   (getIndex * RxFifoBufferElementSize));
+												   (getIndex * RxFifo0ElementSize));
 			else
 				return reinterpret_cast<uint32_t*>(RxFifo1() +
-												   (getIndex * RxFifoBufferElementSize));
+												   (getIndex * RxFifo1ElementSize));
 		}
 	};
 

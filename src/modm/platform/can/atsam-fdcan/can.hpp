@@ -74,6 +74,11 @@ private:
 		}
 	}
 
+	// helper for static_assert
+	template<class T = void>
+	static inline constexpr bool
+	always_false_v = false;
+
 	using MessageRam = fdcan::MessageRam<id, MessageRamConfig>;
 	static_assert(MessageRam::StandardFilterCount <= 128, "A maximum of 128 standard filters are allowed.");
 	static_assert(MessageRam::ExtendedFilterCount <= 64, "A maximum of 64 standard filters are allowed.");

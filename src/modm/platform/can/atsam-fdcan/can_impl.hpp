@@ -217,10 +217,122 @@ McanDriver<id, MessageRamConfig>::initializeWithPrescaler(
 						 MCAN_RXF1C_F1S(MessageRam::RxFifo1Elements) |
 						 MCAN_RXF1C_F1SA(MessageRam::RxFifo1() >> 2);
 
-	// Buffer / FIFO Element Size Configuration -> we have enought memory for 64 byte messages, this
-	// is also compatible with STM32
-	Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_64_BYTE | MCAN_RXESC_F1DS_64_BYTE | MCAN_RXESC_RBDS_64_BYTE;
-	Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_64_BYTE;
+	// Buffer / FIFO Element Size Configuration
+
+	Regs()->MCAN_RXESC = 0;
+	Regs()->MCAN_TXESC = 0;
+
+	if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 8 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_8_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 12 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_12_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 16 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_16_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 20 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_20_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 24 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_24_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 32 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_32_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 48 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_48_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo0ElementSize - 2*4) == 64 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F0DS_64_BYTE;
+	}
+	else {
+		static_assert(always_false_v<>, "Invalid MessageRam::RxFifo0ElementSize value");
+	}
+
+	if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 8 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_8_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 12 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_12_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 16 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_16_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 20 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_20_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 24 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_24_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 32 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_32_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 48 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_48_BYTE;
+	}
+	else if constexpr ((MessageRam::RxFifo1ElementSize - 2*4) == 64 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_F1DS_64_BYTE;
+	}
+	else {
+		static_assert(always_false_v<>, "Invalid MessageRam::RxFifo1ElementSize value");
+	}
+
+	if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 8 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_8_BYTE;
+	}
+	else if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 12 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_12_BYTE;
+	}
+	else if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 16 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_16_BYTE;
+	}
+	else if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 20 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_20_BYTE;
+	}
+	else if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 24 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_24_BYTE;
+	}
+	else if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 32 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_32_BYTE;
+	}
+	else if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 48 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_48_BYTE;
+	}
+	else if constexpr ((MessageRam::RxBufferElementSize - 2*4) == 64 ) {
+		Regs()->MCAN_RXESC = MCAN_RXESC_RBDS_64_BYTE;
+	}
+	else {
+		static_assert(always_false_v<>, "Invalid MessageRam::RxBufferElementSize value");
+	}
+
+	if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 8 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_8_BYTE;
+	}
+	else if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 12 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_12_BYTE;
+	}
+	else if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 16 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_16_BYTE;
+	}
+	else if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 20 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_20_BYTE;
+	}
+	else if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 24 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_24_BYTE;
+	}
+	else if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 32 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_32_BYTE;
+	}
+	else if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 48 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_48_BYTE;
+	}
+	else if constexpr ((MessageRam::TxFifoElementSize - 2*4) == 64 ) {
+		Regs()->MCAN_TXESC = MCAN_TXESC_TBDS_64_BYTE;
+	}
+	else {
+		static_assert(always_false_v<>, "Invalid MessageRam::TxFifoElementSize value");
+	}
 
 	// Configure dedicated Rx buffer address
 	Regs()->MCAN_RXBC = MCAN_RXBC_RBSA(MessageRam::RxBuffer() >> 2);
