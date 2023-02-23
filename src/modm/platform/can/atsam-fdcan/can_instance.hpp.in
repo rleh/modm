@@ -15,7 +15,9 @@
 
 namespace modm::platform
 {
+
 /// @ingroup modm_platform_can_{{ id }}
 template<class MessageRamConfig = fdcan::DefaultMessageRamConfig>
 using Mcan{{ id }} = modm::platform::McanDriver<{{ id }}, MessageRamConfig>;
+
 }

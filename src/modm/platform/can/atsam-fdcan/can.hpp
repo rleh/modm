@@ -54,13 +54,24 @@ public:
 	using ErrorCallback = void (*)();
 
 private:
-	static auto* Regs() {
+	static auto*
+	Regs()
+	{
 		if constexpr (id == 0)
+		{
 			return MCAN0;
-		else if constexpr (id == 1)
+		} else if constexpr (id == 1)
+		{
+			#ifdef MCAN1
 			return MCAN1;
-		else
+			#else
+			// necessary workaround for devices without MCAN1 peripheral
 			return nullptr;
+			#endif
+		} else
+		{
+			return nullptr;
+		}
 	}
 
 	using MessageRam = fdcan::MessageRam<id, MessageRamConfig>;
@@ -86,11 +97,9 @@ private:
 	};
 
 	static void
-	initializeWithPrescaler(
-			CanBitTimingConfiguration standardTimings,
-			std::optional<CanBitTimingConfiguration> fdDataTimings,
-			Mode startupMode, bool overwriteOnOverrun
-			);
+	initializeWithPrescaler(CanBitTimingConfiguration standardTimings,
+							std::optional<CanBitTimingConfiguration> fdDataTimings,
+							uint32_t interruptPriority, Mode startupMode, bool overwriteOnOverrun);
 
 public:
 	// Expose template parameters to be checked by e.g. drivers or application
@@ -157,7 +166,7 @@ public:
 		bitrate_t fastDataBitrate=0 // 0: MCAN mode disabled
 	>
 	static inline void
-	initialize([[maybe_unused]] uint32_t interruptPriority = 0, Mode startupMode = Mode::Normal,
+	initialize(uint32_t interruptPriority, Mode startupMode = Mode::Normal,
 				bool overwriteOnOverrun = true)
 	{
 		using Timings = CanBitTiming<
@@ -183,6 +192,7 @@ public:
 		return initializeWithPrescaler(
 			Timings::getBitTimings(),
 			fastDataTimings,
+			interruptPriority,
 			startupMode,
 			overwriteOnOverrun);
 	}
@@ -347,6 +357,9 @@ private:
 	static void
 	configureMode(Mode mode);
 
+	static void
+	configureInterrupts(uint32_t interruptPriority);
+
 	struct EnterInitMode
 	{
 		EnterInitMode()
@@ -373,29 +386,31 @@ private:
 	};
 
 private:
-	bool
+	static bool
 	isHardwareTxQueueFull();
 
-	bool
+	static bool
 	rxFifo0HasMessage();
 
-	bool
+	static bool
 	rxFifo1HasMessage();
 
-	void
+	static void
 	acknowledgeRxFifoRead(uint8_t fifoIndex, uint8_t getIndex);
 
-	uint8_t
+	static uint8_t
 	retrieveRxFifoGetIndex(uint8_t fifoIndex);
 
-	uint8_t
+	static uint8_t
 	retrieveTxFifoPutIndex();
 
-	void
+	static void
 	readMsg(modm::can::Message& message, uint8_t fifoIndex, uint8_t* filter_id, uint16_t *timestamp);
 
-	bool
+	static bool
 	sendMsg(const modm::can::Message& message);
 };
 
 }	// namespace modm::platform
+
+#include "can_impl.hpp"

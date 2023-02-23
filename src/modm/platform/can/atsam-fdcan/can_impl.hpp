@@ -158,13 +158,16 @@ void
 McanDriver<id, MessageRamConfig>::initializeWithPrescaler(
 		CanBitTimingConfiguration standardTimings,
 		std::optional<CanBitTimingConfiguration> fdDataTimings,
-		Mode startupMode, bool overwriteOnOverrun)
+		uint32_t interruptPriority, Mode startupMode,
+		bool overwriteOnOverrun)
 {
 	if constexpr (id == 0) {
 		ClockGen::enable<ClockPeripheral::Can0>();
 	}
 	else if constexpr (id == 1) {
+		#ifdef MCAN1
 		ClockGen::enable<ClockPeripheral::Can1>();
+		#endif
 	}
 
 	EnterInitMode init;
@@ -177,8 +180,10 @@ McanDriver<id, MessageRamConfig>::initializeWithPrescaler(
 							CCFG_CAN0_CAN0DMABA((MessageRam::getRamBase() >> 16));
 	}
 	else if constexpr (id == 1) {
+		#ifdef MCAN1
 		MATRIX->CCFG_SYSIO = (MATRIX->CCFG_SYSIO & ~CCFG_SYSIO_CAN1DMABA_Msk) |
 							 CCFG_SYSIO_CAN1DMABA((MessageRam::getRamBase() >> 16));
+		#endif
 	}
 
 	// Configure nominal bitrate
@@ -242,6 +247,8 @@ McanDriver<id, MessageRamConfig>::initializeWithPrescaler(
 	} else {
 		Regs()->MCAN_CCCR &= ~(MCAN_CCCR_BRSE | MCAN_CCCR_FDOE);
 	}
+
+	configureInterrupts(interruptPriority);
 
 	configureMode(startupMode);
 }
@@ -495,6 +502,23 @@ McanDriver<id, MessageRamConfig>::clearExtendedFilters()
 	EnterInitMode init;
 	for (unsigned i = 0; i < ExtendedFilterCount; ++i) {
 		MessageRam::setExtendedFilterDisabled(i);
+	}
+}
+
+template<uint8_t id, class MessageRamConfig>
+void
+McanDriver<id, MessageRamConfig>::configureInterrupts(uint32_t interruptPriority)
+{
+
+	if constexpr (id == 0) {
+		NVIC_SetPriority(MCAN0_INT0_IRQn, interruptPriority);
+		NVIC_EnableIRQ(MCAN0_INT0_IRQn);
+	}
+	else if constexpr (id == 1) {
+		#ifdef MCAN1
+		NVIC_SetPriority(MCAN1_INT0_IRQn, interruptPriority);
+		NVIC_EnableIRQ(MCAN1_INT0_IRQn);
+		#endif
 	}
 }
 
