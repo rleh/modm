@@ -37,7 +37,7 @@ struct Message
 	{
 		flags.extended = extended;
 		for (uint8_t ii = 0; ii < length; ++ii)
-			data[ii] = inData >> ((7 - ii) * 8);
+			data[ii] = inData >> ((7 - ii - (8 - length)) * 8);
 	}
 
 	constexpr Message(uint32_t inIdentifier, uint8_t inLength, const uint8_t *inData, bool extended = false) :
