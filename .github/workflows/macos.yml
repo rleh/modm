@@ -14,14 +14,14 @@ jobs:
 
       - name: Setup environment - Brew tap
         run: |
-          brew tap modm-ext/arm
+          brew tap modm-ext/modm
           brew tap osx-cross/avr
 
       - name: Setup environment - Brew install
         run: |
           export HOMEBREW_NO_INSTALL_CLEANUP=1 # saves time
           brew update
-          brew install doxygen boost gcc avr-gcc@12 arm-gcc-bin@12 cmake || true
+          brew install doxygen boost gcc avr-gcc@12 modm-ext/modm/arm-gcc-xpack@12 cmake || true
           brew link --force avr-gcc@12
           # brew upgrade boost gcc git || true
 
