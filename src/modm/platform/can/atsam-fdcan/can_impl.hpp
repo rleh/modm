@@ -16,30 +16,30 @@
 
 namespace modm::platform {
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::isHardwareTxQueueFull()
+McanDriver<id, mrc>::isHardwareTxQueueFull()
 {
 	return ((Regs()->MCAN_TXFQS & MCAN_TXFQS_TFQF) != 0);
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::rxFifo0HasMessage()
+McanDriver<id, mrc>::rxFifo0HasMessage()
 {
 	return ((Regs()->MCAN_RXF0S & MCAN_RXF0S_F0FL_Msk) > 0);
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::rxFifo1HasMessage()
+McanDriver<id, mrc>::rxFifo1HasMessage()
 {
 	return ((Regs()->MCAN_RXF1S & MCAN_RXF1S_F1FL_Msk) > 0);
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::acknowledgeRxFifoRead(uint8_t fifoIndex, uint8_t getIndex)
+McanDriver<id, mrc>::acknowledgeRxFifoRead(uint8_t fifoIndex, uint8_t getIndex)
 {
 	if (fifoIndex == 0) {
 		Regs()->MCAN_RXF0A = getIndex;
@@ -49,9 +49,9 @@ McanDriver<id, MessageRamConfig>::acknowledgeRxFifoRead(uint8_t fifoIndex, uint8
 	}
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 uint8_t
-McanDriver<id, MessageRamConfig>::retrieveRxFifoGetIndex(uint8_t fifoIndex)
+McanDriver<id, mrc>::retrieveRxFifoGetIndex(uint8_t fifoIndex)
 {
 	if (fifoIndex == 0) {
 		return ((Regs()->MCAN_RXF0S & MCAN_RXF0S_F0GI_Msk) >> MCAN_RXF0S_F0GI_Pos);
@@ -60,18 +60,18 @@ McanDriver<id, MessageRamConfig>::retrieveRxFifoGetIndex(uint8_t fifoIndex)
 	}
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 uint8_t
-McanDriver<id, MessageRamConfig>::retrieveTxFifoPutIndex()
+McanDriver<id, mrc>::retrieveTxFifoPutIndex()
 {
 	return ((Regs()->MCAN_TXFQS & MCAN_TXFQS_TFQPI_Msk) >> MCAN_TXFQS_TFQPI_Pos);
 }
 
 // Internal function to receive a message from an RX Fifo.
 // Called by RX interrupt or by getMessage()
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::readMsg(modm::can::Message& message, uint8_t fifoIndex, uint8_t* filter_id, uint16_t *timestamp)
+McanDriver<id, mrc>::readMsg(modm::can::Message& message, uint8_t fifoIndex, uint8_t* filter_id, uint16_t *timestamp)
 {
 	using namespace modm::platform;
 	using CommonHeader = MessageRam::CommonFifoHeader;
@@ -116,13 +116,13 @@ McanDriver<id, MessageRamConfig>::readMsg(modm::can::Message& message, uint8_t f
 
 // Internal function to send a CAN message.
 // called by sendMessage and by TX Interrupt.
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::sendMsg(const modm::can::Message& message)
+McanDriver<id, mrc>::sendMsg(const modm::can::Message& message)
 {
 	using namespace modm::platform;
 
-	if (!McanDriver<id, MessageRamConfig>::isReadyToSend()) {
+	if (!McanDriver<id, mrc>::isReadyToSend()) {
 		return false;
 	}
 
@@ -153,9 +153,9 @@ McanDriver<id, MessageRamConfig>::sendMsg(const modm::can::Message& message)
 	return true;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::initializeWithPrescaler(
+McanDriver<id, mrc>::initializeWithPrescaler(
 		CanBitTimingConfiguration standardTimings,
 		std::optional<CanBitTimingConfiguration> fdDataTimings,
 		uint32_t interruptPriority, Mode startupMode,
@@ -365,18 +365,18 @@ McanDriver<id, MessageRamConfig>::initializeWithPrescaler(
 	configureMode(startupMode);
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::setMode(Mode mode)
+McanDriver<id, mrc>::setMode(Mode mode)
 {
 	EnterInitMode init;
 	Regs()->MCAN_CCCR |= MCAN_CCCR_CCE;
 	configureMode(mode);
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::configureMode(Mode mode)
+McanDriver<id, mrc>::configureMode(Mode mode)
 {
 	// Reset all mode register bits
 	Regs()->MCAN_TEST = 0;
@@ -406,9 +406,9 @@ McanDriver<id, MessageRamConfig>::configureMode(Mode mode)
 	}
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::setAutomaticRetransmission(bool retransmission)
+McanDriver<id, mrc>::setAutomaticRetransmission(bool retransmission)
 {
 	if (retransmission) {
 		// Enable retransmission
@@ -419,16 +419,16 @@ McanDriver<id, MessageRamConfig>::setAutomaticRetransmission(bool retransmission
 	}
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::isMessageAvailable()
+McanDriver<id, mrc>::isMessageAvailable()
 {
 	return rxFifo0HasMessage() || rxFifo1HasMessage();
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::getMessage(can::Message& message, uint8_t *filter_id, uint16_t *timestamp)
+McanDriver<id, mrc>::getMessage(can::Message& message, uint8_t *filter_id, uint16_t *timestamp)
 {
 	if (rxFifo0HasMessage()) {
 		readMsg(message, 0, filter_id, timestamp);
@@ -440,23 +440,23 @@ McanDriver<id, MessageRamConfig>::getMessage(can::Message& message, uint8_t *fil
 	return false;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::isReadyToSend()
+McanDriver<id, mrc>::isReadyToSend()
 {
 	return !isHardwareTxQueueFull();
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::sendMessage(const can::Message& message)
+McanDriver<id, mrc>::sendMessage(const can::Message& message)
 {
 	return sendMsg(message);
 }
 
-template<uint8_t id, class MessageRamConfig>
-McanDriver<id, MessageRamConfig>::BusState
-McanDriver<id, MessageRamConfig>::getBusState()
+template<uint8_t id, fdcan::MessageRamConfig mrc>
+McanDriver<id, mrc>::BusState
+McanDriver<id, mrc>::getBusState()
 {
 	if (Regs()->MCAN_PSR & MCAN_PSR_BO) {
 		return BusState::Off;
@@ -472,14 +472,14 @@ McanDriver<id, MessageRamConfig>::getBusState()
 	}
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::setStandardFilter(
+McanDriver<id, mrc>::setStandardFilter(
 	uint8_t standardIndex, FilterConfig config,
 	modm::can::StandardIdentifier id_,
 	modm::can::StandardMask mask)
 {
-	if (standardIndex >= StandardFilterCount) {
+	if (standardIndex >= MessageRam::StandardFilterCount) {
 		return false;
 	}
 
@@ -493,14 +493,14 @@ McanDriver<id, MessageRamConfig>::setStandardFilter(
 	return true;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::setStandardFilter(
+McanDriver<id, mrc>::setStandardFilter(
 	uint8_t standardIndex, FilterConfig config,
 	modm::can::StandardIdentifier id0,
 	modm::can::StandardIdentifier id1)
 {
-	if (standardIndex >= StandardFilterCount) {
+	if (standardIndex >= MessageRam::StandardFilterCount) {
 		return false;
 	}
 
@@ -514,14 +514,14 @@ McanDriver<id, MessageRamConfig>::setStandardFilter(
 	return true;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::setStandardRangeFilter(
+McanDriver<id, mrc>::setStandardRangeFilter(
 	uint8_t standardIndex, FilterConfig config,
 	modm::can::StandardIdentifier first,
 	modm::can::StandardIdentifier last)
 {
-	if (standardIndex >= StandardFilterCount) {
+	if (standardIndex >= MessageRam::StandardFilterCount) {
 		return false;
 	}
 
@@ -534,14 +534,14 @@ McanDriver<id, MessageRamConfig>::setStandardRangeFilter(
 	return true;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::setExtendedFilter(
+McanDriver<id, mrc>::setExtendedFilter(
 	uint8_t extendedIndex, FilterConfig config,
 	modm::can::ExtendedIdentifier id_,
 	modm::can::ExtendedMask mask)
 {
-	if (extendedIndex >= ExtendedFilterCount) {
+	if (extendedIndex >= MessageRam::ExtendedFilterCount) {
 		return false;
 	}
 
@@ -555,14 +555,14 @@ McanDriver<id, MessageRamConfig>::setExtendedFilter(
 	return true;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::setExtendedFilter(
+McanDriver<id, mrc>::setExtendedFilter(
 	uint8_t extendedIndex, FilterConfig config,
 	modm::can::ExtendedIdentifier id0,
 	modm::can::ExtendedIdentifier id1)
 {
-	if (extendedIndex >= ExtendedFilterCount) {
+	if (extendedIndex >= MessageRam::ExtendedFilterCount) {
 		return false;
 	}
 
@@ -576,14 +576,14 @@ McanDriver<id, MessageRamConfig>::setExtendedFilter(
 	return true;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 bool
-McanDriver<id, MessageRamConfig>::setExtendedRangeFilter(
+McanDriver<id, mrc>::setExtendedRangeFilter(
 	uint8_t extendedIndex, FilterConfig config,
 	modm::can::ExtendedIdentifier first,
 	modm::can::ExtendedIdentifier last)
 {
-	if (extendedIndex >= ExtendedFilterCount) {
+	if (extendedIndex >= MessageRam::ExtendedFilterCount) {
 		return false;
 	}
 
@@ -597,29 +597,29 @@ McanDriver<id, MessageRamConfig>::setExtendedRangeFilter(
 	return true;
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::clearStandardFilters()
+McanDriver<id, mrc>::clearStandardFilters()
 {
 	EnterInitMode init;
-	for (unsigned i = 0; i < StandardFilterCount; ++i) {
+	for (unsigned i = 0; i < MessageRam::StandardFilterCount; ++i) {
 		MessageRam::setStandardFilterDisabled(i);
 	}
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::clearExtendedFilters()
+McanDriver<id, mrc>::clearExtendedFilters()
 {
 	EnterInitMode init;
-	for (unsigned i = 0; i < ExtendedFilterCount; ++i) {
+	for (unsigned i = 0; i < MessageRam::ExtendedFilterCount; ++i) {
 		MessageRam::setExtendedFilterDisabled(i);
 	}
 }
 
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 void
-McanDriver<id, MessageRamConfig>::configureInterrupts(uint32_t interruptPriority)
+McanDriver<id, mrc>::configureInterrupts(uint32_t interruptPriority)
 {
 
 	if constexpr (id == 0) {

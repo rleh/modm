@@ -22,6 +22,13 @@
 
 #include "message_ram.hpp"
 
+namespace {
+using ErrorCallback = void (*)();
+
+extern ErrorCallback mcan0ErrorCallback;
+extern ErrorCallback mcan1ErrorCallback;
+}
+
 namespace modm::platform
 {
 /**
@@ -31,7 +38,7 @@ namespace modm::platform
  * @author		Christopher Durand <christopher.durand@rwth-aachen.de>
  * @ingroup		modm_platform_can
  */
-template<uint8_t id, class MessageRamConfig>
+template<uint8_t id, fdcan::MessageRamConfig mrc>
 class McanDriver : public ::modm::Can
 {
 public:
@@ -51,7 +58,7 @@ public:
 
 	};
 
-	using ErrorCallback = void (*)();
+	using ErrorCallback = ::ErrorCallback;
 
 private:
 	static auto*
@@ -79,7 +86,7 @@ private:
 	static inline constexpr bool
 	always_false_v = false;
 
-	using MessageRam = fdcan::MessageRam<id, MessageRamConfig>;
+	using MessageRam = fdcan::MessageRam<id, mrc>;
 	static_assert(MessageRam::StandardFilterCount <= 128, "A maximum of 128 standard filters are allowed.");
 	static_assert(MessageRam::ExtendedFilterCount <= 64, "A maximum of 64 standard filters are allowed.");
 	static_assert(MessageRam::RxFifo0Elements <= 64, "A maximum of 64 Rx Fifo 0 elements are allowed.");
@@ -91,8 +98,6 @@ private:
 
 	static inline std::array<uint32_t, MessageRam::Size/4> modm_aligned(4)
 	messageRamMemory{};
-
-	static inline volatile ErrorCallback errorCallback_ = nullptr;
 
 	struct RxMessage
 	{
@@ -232,9 +237,6 @@ public:
 
 	using FilterConfig = MessageRam::FilterConfig;
 
-	static constexpr inline uint8_t StandardFilterCount{28};
-	static constexpr inline uint8_t ExtendedFilterCount{8};
-
 	/// Set standard filter with id and mask
 	/// \param standardIndex Standard filter index 0..27
 	/// \returns true if filter index is valid
@@ -338,7 +340,12 @@ public:
 	static void
 	setErrorInterruptCallback(ErrorCallback callback)
 	{
-		errorCallback_ = callback;
+		if constexpr (id == 0) {
+			mcan0ErrorCallback = callback;
+		}
+		else {
+			mcan1ErrorCallback = callback;
+		}
 		if(callback) {
 			Regs()->MCAN_IE |=  (MCAN_IE_BOE | MCAN_IE_EPE | MCAN_IE_EWE);
 		} else {
@@ -349,7 +356,12 @@ public:
 	static ErrorCallback
 	getErrorInterruptCallback()
 	{
-		return errorCallback_;
+		if constexpr (id == 0) {
+			return mcan0ErrorCallback;
+		}
+		else {
+			return mcan1ErrorCallback;
+		}
 	}
 
 	static uint16_t

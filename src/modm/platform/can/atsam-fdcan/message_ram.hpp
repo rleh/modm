@@ -25,27 +25,41 @@
 namespace modm::platform::fdcan
 {
 
-struct DefaultMessageRamConfig
+
+struct MessageRamConfig
 {
-	static constexpr uint32_t StandardFilterCount 	= 1;
-	static constexpr uint32_t ExtendedFilterCount	= 1;
+	uint32_t filterCountStandard;
+	uint32_t filterCountExtended;
+	uint32_t rxFifo0Elements;
+	uint32_t rxFifo0ElementSize;
+	uint32_t rxFifo1Elements;
+	uint32_t rxFifo1ElementSize;
+	uint32_t rxBufferElements;
+	uint32_t rxBufferElementSize;
+	uint32_t txEventFifoEntries;
+	uint32_t txFifoElements;
+	uint32_t txFifoElementSize;
+};
 
-	static constexpr uint32_t RxFifo0Elements		= 32;
-	static constexpr uint32_t RxFifo0ElementSize	= 2*4 + modm::can::Message::capacity;
-	static constexpr uint32_t RxFifo1Elements		= 32;
-	static constexpr uint32_t RxFifo1ElementSize	= 2*4 + modm::can::Message::capacity;
-	static constexpr uint32_t RxBufferElements		= 1;
-	static constexpr uint32_t RxBufferElementSize	= 2*4 + modm::can::Message::capacity;
-
-	static constexpr uint32_t TxEventFifoEntries	= 1;
-	static constexpr uint32_t TxFifoElements		= 32;
-	static constexpr uint32_t TxFifoElementSize		= 2*4 + modm::can::Message::capacity;
+constexpr MessageRamConfig defaultMessageRamConfig
+{
+	.filterCountStandard 	= 1,
+	.filterCountExtended	= 1,
+	.rxFifo0Elements		= 32,
+	.rxFifo0ElementSize		= 2*4 + modm::can::Message::capacity,
+	.rxFifo1Elements		= 32,
+	.rxFifo1ElementSize		= 2*4 + modm::can::Message::capacity,
+	.rxBufferElements		= 1,
+	.rxBufferElementSize	= 2*4 + modm::can::Message::capacity,
+	.txEventFifoEntries		= 1,
+	.txFifoElements			= 32,
+	.txFifoElementSize		= 2*4 + modm::can::Message::capacity,
 };
 
 /// Internal class to manage FDCAN message ram
 /// \tparam InstanceIndex index of FDCAN instance (starts at 0)
 /// \tparam Config configuration of the Tx/Rx/Filter/... buffer sizes
-template<uint8_t InstanceIndex, class Config = DefaultMessageRamConfig>
+template<uint8_t InstanceIndex, MessageRamConfig config = defaultMessageRamConfig>
 class MessageRam
 {
 public:
@@ -110,20 +124,20 @@ public:
 		Reject		= 0b011u << 27
 	};
 public:
-	static constexpr uint32_t StandardFilterCount 	= Config::StandardFilterCount;
+	static constexpr uint32_t StandardFilterCount 	= config.filterCountStandard;
 	static constexpr uint32_t StandardFilterSize	= 1*4;
-	static constexpr uint32_t ExtendedFilterCount	= Config::ExtendedFilterCount;
+	static constexpr uint32_t ExtendedFilterCount	= config.filterCountExtended;
 	static constexpr uint32_t ExtendedFilterSize	= 2*4;
-	static constexpr uint32_t RxFifo0Elements		= Config::RxFifo0Elements;
-	static constexpr uint32_t RxFifo0ElementSize	= Config::RxFifo0ElementSize;
-	static constexpr uint32_t RxFifo1Elements		= Config::RxFifo1Elements;
-	static constexpr uint32_t RxFifo1ElementSize	= Config::RxFifo1ElementSize;
-	static constexpr uint32_t RxBufferElements		= Config::RxBufferElements;
-	static constexpr uint32_t RxBufferElementSize	= Config::RxBufferElementSize;
-	static constexpr uint32_t TxEventFifoEntries	= Config::TxEventFifoEntries;
+	static constexpr uint32_t RxFifo0Elements		= config.rxFifo0Elements;
+	static constexpr uint32_t RxFifo0ElementSize	= config.rxFifo0ElementSize;
+	static constexpr uint32_t RxFifo1Elements		= config.rxFifo1Elements;
+	static constexpr uint32_t RxFifo1ElementSize	= config.rxFifo1ElementSize;
+	static constexpr uint32_t RxBufferElements		= config.rxBufferElements;
+	static constexpr uint32_t RxBufferElementSize	= config.rxBufferElementSize;
+	static constexpr uint32_t TxEventFifoEntries	= config.txEventFifoEntries;
 	static constexpr uint32_t TxEventFifoEntrySize	= 2*4;
-	static constexpr uint32_t TxFifoElements		= Config::TxFifoElements;
-	static constexpr uint32_t TxFifoElementSize		= Config::TxFifoElementSize;
+	static constexpr uint32_t TxFifoElements		= config.txFifoElements;
+	static constexpr uint32_t TxFifoElementSize		= config.txFifoElementSize;
 
 	/// Total message ram size in bytes
 	static constexpr uint32_t Size =
@@ -283,18 +297,18 @@ public:
 	}
 
 	static void
-	setStandardFilter(uint8_t index, FilterType type, FilterConfig config, uint16_t id1, uint16_t id2)
+	setStandardFilter(uint8_t index, FilterType type, FilterConfig filterConfig, uint16_t id1, uint16_t id2)
 	{
 		constexpr auto idMask = (1u << 11) - 1;
-		*standardFilter(index) = uint32_t(type) | uint32_t(config) |
+		*standardFilter(index) = uint32_t(type) | uint32_t(filterConfig) |
 			(id2 & idMask) | ((id1 & idMask) << 16);
 	}
 
 	static void
-	setExtendedFilter0(uint8_t index, FilterConfig config, uint32_t id)
+	setExtendedFilter0(uint8_t index, FilterConfig filterConfig, uint32_t id)
 	{
 		constexpr auto idMask = (1u << 29) - 1;
-		*extendedFilter(index) = (uint32_t(config) << 2) | (id & idMask);
+		*extendedFilter(index) = (uint32_t(filterConfig) << 2) | (id & idMask);
 	}
 
 	static void

@@ -17,7 +17,14 @@ namespace modm::platform
 {
 
 /// @ingroup modm_platform_can_{{ id }}
-template<class MessageRamConfig = fdcan::DefaultMessageRamConfig>
-using Mcan{{ id }} = modm::platform::McanDriver<{{ id }}, MessageRamConfig>;
+/// @brief Mcan{{ id }} instance with configurable message RAM
+template<fdcan::MessageRamConfig mrc = fdcan::defaultMessageRamConfig>
+using Mcan{{ id }}Custom = modm::platform::McanDriver<{{ id }}, mrc>;
+
+
+/// @ingroup modm_platform_can_{{ id }}
+/// @brief Mcan{{ id }} instance with default message RAM config. For more
+/// filters, larger buffers or other options see `Mcan{{ id }}Custom`
+using Mcan{{ id }} = modm::platform::McanDriver<{{ id }}, fdcan::defaultMessageRamConfig>;
 
 }
