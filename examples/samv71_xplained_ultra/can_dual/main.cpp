@@ -30,16 +30,20 @@ public:
 	update()
 	{
 		PT_BEGIN();
-		for (Message tm : testMessages)
+		for (i = 0; i < testMessages.size(); i++)
 		{
-			Mcan1<>::sendMessage(tm);
+			while (not Mcan1::sendMessage(testMessages[i])) {
+				MODM_LOG_INFO << "Unable to send message " << testMessages[i] << "on Mcan1\n";
+				PT_YIELD();
+			}
 			modm::delay(delay);
+			PT_YIELD();
 		}
 		PT_END();
 	}
 
 private:
-	uint8_t messageLength = 8;
+	uint8_t messageLength = 64;
 	std::array<Message, 13> testMessages = {
 		Message{0x10, messageLength, 0x0000000000000010, false},
 		Message{0x11, messageLength, 0x1111111111110011, false},
@@ -55,6 +59,8 @@ private:
 		Message{0x11, messageLength, 0xbbbbbbbbbbbb0011, false},
 		Message{0x10, messageLength, 0xcccccccccccc0010, false},
 	};
+
+	size_t i;
 
 	std::chrono::microseconds delay = std::chrono::microseconds{1};
 };
@@ -83,7 +89,7 @@ private:
 };
 
 SendThread sendThread;
-ReceiveThread<Mcan0<>, 0> receiveThreadMcan0;
+ReceiveThread<Mcan0, 0> receiveThreadMcan0;
 
 int
 main()
@@ -94,25 +100,25 @@ main()
 
 	MODM_LOG_INFO << "Mcan1: Initializing with 125kbps for boards CAN transceiver (PC12/PC14)." << modm::endl;
 	// Mcan1 is connted in Board::initialize(); CAN transceiver on the dev board
-	Mcan1<>::initialize<Board::SystemClock, 125_kbps, 1_pct>(12);
+	Mcan1::initialize<Board::SystemClock, 125_kbps, 1_pct>(12);
 
 	MODM_LOG_INFO << "Mcan1: Setting up Filter to receive every message." << modm::endl;
-	Mcan1<>::setExtendedFilter(0, Mcan1<>::FilterConfig::Fifo0,
+	Mcan1::setExtendedFilter(0, Mcan1::FilterConfig::Fifo0,
 			modm::can::ExtendedIdentifier(0),
 			modm::can::ExtendedMask(0));
-	Mcan1<>::setStandardFilter(0, Mcan1<>::FilterConfig::Fifo0,
+	Mcan1::setStandardFilter(0, Mcan1::FilterConfig::Fifo0,
 			modm::can::StandardIdentifier(0),
 			modm::can::StandardMask(0));
 
 	MODM_LOG_INFO << "Mcan0: Initializing with 125kbps for PB2/PB3." << modm::endl;
-	Mcan0<>::connect<GpioB2::Tx, GpioB3::Rx>();
-	Mcan0<>::initialize<Board::SystemClock, 125_kbps, 1_pct>(12);
+	Mcan0::connect<GpioB2::Tx, GpioB3::Rx>();
+	Mcan0::initialize<Board::SystemClock, 125_kbps, 1_pct>(12);
 
 	MODM_LOG_INFO << "Mcan0: Setting up Filter to receive every message." << modm::endl;
-	Mcan0<>::setExtendedFilter(0, Mcan0<>::FilterConfig::Fifo0,
+	Mcan0::setExtendedFilter(0, Mcan0::FilterConfig::Fifo0,
 			modm::can::ExtendedIdentifier(0),
 			modm::can::ExtendedMask(0));
-	Mcan0<>::setStandardFilter(0, Mcan0<>::FilterConfig::Fifo0,
+	Mcan0::setStandardFilter(0, Mcan0::FilterConfig::Fifo0,
 			modm::can::StandardIdentifier(0),
 			modm::can::StandardMask(0));
 
