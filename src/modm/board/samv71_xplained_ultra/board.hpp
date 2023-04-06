@@ -84,7 +84,7 @@ namespace Can
 /// @{
 using Rx = GpioC12;
 using Tx = GpioC14;
-using Can = Mcan1<>;
+using Can = Mcan1;
 /// @}
 }
 
