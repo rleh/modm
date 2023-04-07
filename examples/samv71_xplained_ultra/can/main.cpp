@@ -24,8 +24,6 @@ main()
 {
 	Board::initialize();
 
-	using Mcan1 = modm::platform::Mcan1<>;
-
 	MODM_LOG_INFO << "CAN Test Program" << modm::endl;
 
 	MODM_LOG_INFO << "Mcan1: Initializing with 125kbps for boards CAN transceiver (PC12/PC14)." << modm::endl;
@@ -39,6 +37,12 @@ main()
 	Mcan1::setStandardFilter(0, Mcan1::FilterConfig::Fifo0,
 			modm::can::StandardIdentifier(0),
 			modm::can::StandardMask(0));
+
+	Mcan1::setMode(Mcan1::Mode::LoopBack);
+
+	Mcan1::setErrorInterruptCallback([](){
+		Board::Led1::set();
+	});
 
 	uint32_t counter{0};
 
