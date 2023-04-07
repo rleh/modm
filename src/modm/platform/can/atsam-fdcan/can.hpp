@@ -24,13 +24,14 @@
 
 namespace {
 using ErrorCallback = void (*)();
-
-extern ErrorCallback mcan0ErrorCallback;
-extern ErrorCallback mcan1ErrorCallback;
 }
 
 namespace modm::platform
 {
+
+extern ErrorCallback mcan0ErrorCallback;
+extern ErrorCallback mcan1ErrorCallback;
+
 /**
  * @brief		MCAN (CAN with Flexible Data-Rate)
  *
@@ -341,10 +342,10 @@ public:
 	setErrorInterruptCallback(ErrorCallback callback)
 	{
 		if constexpr (id == 0) {
-			mcan0ErrorCallback = callback;
+			modm::platform::mcan0ErrorCallback = callback;
 		}
 		else {
-			mcan1ErrorCallback = callback;
+			modm::platform::mcan1ErrorCallback = callback;
 		}
 		if(callback) {
 			Regs()->MCAN_IE |=  (MCAN_IE_BOE | MCAN_IE_EPE | MCAN_IE_EWE);
@@ -357,10 +358,10 @@ public:
 	getErrorInterruptCallback()
 	{
 		if constexpr (id == 0) {
-			return mcan0ErrorCallback;
+			return modm::platform::mcan0ErrorCallback;
 		}
 		else {
-			return mcan1ErrorCallback;
+			return modm::platform::mcan1ErrorCallback;
 		}
 	}
 
