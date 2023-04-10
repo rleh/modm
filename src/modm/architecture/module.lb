@@ -124,7 +124,7 @@ class Can(Module):
         def validate_dlc(s: int):
             valid_dlcs = [8, 12, 16, 20, 24, 32, 48, 64]
             if s not in valid_dlcs:
-                raise ValueError("Input must be a valid CAN data length.")
+                raise ValueError(f"Input must be a valid CAN data length: {', '.join(valid_dlcs)}!")
         module.add_option(
             NumericOption(
                 name="message.buffer",
