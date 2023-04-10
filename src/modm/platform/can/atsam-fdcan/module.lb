@@ -26,7 +26,7 @@ class Instance(Module):
         device = env[":target"]
         driver = device.get_driver("mcan")
 
-        properties = device.properties
+        properties = {}
         properties["target"] = target = device.identifier
         properties["driver"] = driver
         properties["id"] = self.instance

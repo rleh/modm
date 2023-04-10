@@ -483,9 +483,6 @@ McanDriver<id, mrc>::setStandardFilter(
 		return false;
 	}
 
-	// TODO: Is INIT mode really necessary to add/modify filters?
-	EnterInitMode init;
-
 	MessageRam::setStandardFilter(standardIndex,
 		MessageRam::FilterType::Classic,
 		config, uint16_t(id_), uint16_t(mask));
