@@ -39,8 +39,6 @@ public:
 			}
 			PT_YIELD();
 			MODM_LOG_INFO << "Mcan1: ...success!\n";
-			//modm::delay(delay);
-			//PT_YIELD();
 		}
 		PT_END();
 	}
@@ -65,8 +63,6 @@ private:
 	};
 
 	size_t i;
-
-	std::chrono::nanoseconds delay = std::chrono::nanoseconds{1};
 };
 
 template<class Can, uint8_t id>
