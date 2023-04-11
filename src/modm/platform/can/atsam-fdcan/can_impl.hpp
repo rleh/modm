@@ -545,9 +545,11 @@ McanDriver<id, mrc>::setExtendedFilter(
 	EnterInitMode init;
 
 	MessageRam::setExtendedFilter0(extendedIndex,
-		config, uint32_t(id_));
+		MessageRam::FilterConfig::Disabled, 0);
 	MessageRam::setExtendedFilter1(extendedIndex,
 		MessageRam::FilterType::Classic, uint32_t(mask));
+	MessageRam::setExtendedFilter0(extendedIndex,
+		config, uint32_t(id_));
 
 	return true;
 }
@@ -566,9 +568,11 @@ McanDriver<id, mrc>::setExtendedFilter(
 	EnterInitMode init;
 
 	MessageRam::setExtendedFilter0(extendedIndex,
-		config, uint32_t(id0));
+		MessageRam::FilterConfig::Disabled, 0);
 	MessageRam::setExtendedFilter1(extendedIndex,
 		MessageRam::FilterType::Dual, uint32_t(id1));
+	MessageRam::setExtendedFilter0(extendedIndex,
+		config, uint32_t(id0));
 
 	return true;
 }
@@ -587,9 +591,11 @@ McanDriver<id, mrc>::setExtendedRangeFilter(
 	EnterInitMode init;
 
 	MessageRam::setExtendedFilter0(extendedIndex,
-		config, uint32_t(first));
+		MessageRam::FilterConfig::Disabled, 0);
 	MessageRam::setExtendedFilter1(extendedIndex,
 		MessageRam::FilterType::Range, uint32_t(last));
+	MessageRam::setExtendedFilter0(extendedIndex,
+		config, uint32_t(first));
 
 	return true;
 }
