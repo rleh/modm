@@ -11,7 +11,7 @@
 
 
 def init(module):
-    module.name = ":test:platform:fdcan"
+    module.name = ":test:platform:stm32-fdcan"
     module.description = "Tests for FDCAN"
 
 def prepare(module, options):
@@ -26,6 +26,6 @@ def prepare(module, options):
 
 def build(env):
 #    env.substitutions = properties
-    env.outbasepath = "modm-test/src/modm-test/platform/fdcan_test"
+    env.outbasepath = "modm-test/src/modm-test/platform/can/stm32-fdcan_test"
     env.copy("fdcan_test.hpp")
     env.copy("fdcan_test.cpp")

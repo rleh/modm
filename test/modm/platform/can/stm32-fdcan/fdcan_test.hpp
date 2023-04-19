@@ -11,7 +11,7 @@
 
 #include <unittest/testsuite.hpp>
 
-/// @ingroup modm_test_test_platform_fdcan
+/// @ingroup modm_test_test_platform_stm32-fdcan
 class FdcanTest : public unittest::TestSuite
 {
 public:

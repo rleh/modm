@@ -45,7 +45,7 @@ FdcanTest::testSendReceive()
 	TEST_ASSERT_EQUALS(receivedMessage.getLength(), 7);
 	TEST_ASSERT_TRUE(receivedMessage.isExtended());
 	TEST_ASSERT_FALSE(receivedMessage.isRemoteTransmitRequest());
-	TEST_ASSERT_TRUE(std::equal(std::begin(data), std::begin(data) + 7, message.data));
+	TEST_ASSERT_TRUE(std::equal(std::begin(data), std::begin(data) + 7, receivedMessage.data));
 }
 
 void
