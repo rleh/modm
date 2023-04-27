@@ -3,6 +3,7 @@
 #
 # Copyright (c) 2016-2018, Niklas Hauser
 # Copyright (c) 2017, Fabian Greif
+# Copyright (c) 2023, Raphael Lehmann
 #
 # This file is part of the modm project.
 #
@@ -17,7 +18,7 @@ def init(module):
 
 def prepare(module, options):
     device = options[":target"]
-    if device.identifier.family not in ["g0","g4", "f1", "f4"]:
+    if device.identifier.family not in ["g0","g4", "f1", "f4", "f3"]:
         return False
     if not device.has_driver("flash:stm32*"):
         return False
@@ -37,7 +38,14 @@ def build(env):
         ftype = "sector"
         busy_bit = "FLASH_SR_BSY"
     elif target.family in ["f1"]:
-        block_shift = 10
+        # Actual STM32F1xx flash block sizes:
+        # 1 Kbyte for "low-density" and "medium-density" devices
+        # 2 Kbyte for "connectivity line" and "high-density" devices
+        block_shift = 10 # *hust*...
+        ftype = "page"
+        busy_bit = "FLASH_SR_BSY"
+    elif target.family in ["f3"]:
+        block_shift = 11 # 2K block size
         ftype = "page"
         busy_bit = "FLASH_SR_BSY"
     elif target.family in ["g0"]:
