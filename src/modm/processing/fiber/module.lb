@@ -26,8 +26,7 @@ def prepare(module, options):
     module.add_query(
         EnvironmentQuery(name="__enabled", factory=is_enabled))
 
-    # No ARM64 support yet!
-    return "arm64" not in options[":target"].get_driver("core")["type"]
+    return True
 
 
 def build(env):
@@ -63,6 +62,12 @@ def build(env):
         env.substitutions["stack_minimum"] = (30 + 2) * 8
         env.substitutions["default_stack_size"] = 2**20 # 1MB
         env.template("context_x86_64.cpp.in")
+
+    elif "arm64" in core:
+        env.substitutions["stack_minimum"] = (20 + 2) * 8
+        env.substitutions["default_stack_size"] = 2**20 # 1MB
+        env.copy("context_arm64.cpp")
+        env.template("context_arm64_asm.S.in")
 
     env.template("context.h.in")
     env.template("stack.hpp.in")
