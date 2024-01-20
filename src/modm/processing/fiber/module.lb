@@ -67,7 +67,7 @@ def build(env):
         env.substitutions["stack_minimum"] = (20 + 2) * 8
         env.substitutions["default_stack_size"] = 2**20 # 1MB
         env.copy("context_arm64.cpp")
-        env.template("context_arm64_asm.S.in")
+        env.copy("context_arm64_asm.S")
 
     env.template("context.h.in")
     env.template("stack.hpp.in")
