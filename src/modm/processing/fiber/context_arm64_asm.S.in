@@ -8,15 +8,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-.text
-.globl _modm_context_entry
-.balign 16
-_modm_context_entry:
-
-ldr x0, [sp]		/* Load closure data pointer */
-ldr x1, [sp, #8]	/* Jump to closure function */
-br x1
-
 
 /*
 The assembly code below is adapted from the Boost Context library to work
@@ -33,9 +24,9 @@ See https://github.com/boostorg/context/tree/develop/src/asm
 */
 
 .text
-.globl _modm_context_jump
+.globl modm_context_jump
 .balign 16
-_modm_context_jump:
+modm_context_jump:
 
 /* move stack pointer down */
 sub sp,  sp,  #0xa0

@@ -57,7 +57,7 @@ constexpr uintptr_t StackWatermark = 0xc0ffee'f00d'facade;
 
 }
 
-extern "C" void modm_context_entry();
+extern "C" void modm_context_jump(modm_context_t* from, modm_context_t* to);
 
 void
 modm_context_init(modm_context_t *ctx,
@@ -70,6 +70,17 @@ modm_context_init(modm_context_t *ctx,
 	ctx->sp = top;
 	*--ctx->sp = fn;
 	*--ctx->sp = fn_arg;
+}
+
+void
+modm_context_entry()
+{
+	asm volatile
+	(
+	"ldr x0, [sp]	\n\t"		// Load closure data pointer
+	"ldr x1, [sp, #8]	\n\t"	// Jump to closure function
+	"br x1	\n\t"
+	);
 }
 
 void
